@@ -54,7 +54,9 @@ module top(rst_n, clk, ecall, debug_port);
     .data_out_o   (dm_dout)
   );
 
-  mem u_im(
+  mem # (
+    .memfile(`IM_HEXFILE)
+    )u_im(
     .rst_n_i      (rst_n),
     .clk_i        (clk),
     .wen_i        (1'b0),

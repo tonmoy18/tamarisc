@@ -60,6 +60,7 @@ module core(
   logic [31:0] arith_out;
   logic [31:0] logical_out;
   logic [31:0] shift_out;
+  logic [31:0] imm_signed;
 
   logic [31:0] m_alu_data;
   logic [31:0] w_mux;
@@ -67,6 +68,9 @@ module core(
   logic [4:0] reg_w_addr;
   logic [4:0] reg1_addr;
   logic [4:0] reg2_addr;
+
+  logic [31:0] pc_val;
+  logic incr_pc;
 
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
@@ -77,10 +81,20 @@ module core(
   assign debug_port_o = m_alu_data;
   assign reg_din = w_mux;
 
-  fetch u_fetch(
+  pc u_pc (
+    .rst_n_i        (rst_n_i),
+    .clk_i          (clk_i),
+
+    .incr_pc_i      (incr_pc),
+
+    .pc_o           (pc_val)
+  );
+
+  fetch u_fetch (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
     
+    .pc_i           (pc_val),
     .im_dout_i      (im_dout_i),
 
     .im_addr_o      (im_addr_o),
@@ -88,7 +102,7 @@ module core(
     .inst_o         (d_inst)
   );
 
-  regfile u_regfile(
+  regfile u_regfile (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
@@ -102,7 +116,7 @@ module core(
     .d2out_o        (reg_d2out)
   );
 
-  control u_control(
+  control u_control (
     .rst_n_i          (rst_n_i),
     .clk_i            (clk_i),
     
@@ -117,10 +131,14 @@ module core(
 
     .x_funct3_o       (),
     .x_funct7_30_o    (arith_funct),
-    .reg_w_addr_o     (reg_w_addr)
+    .reg_w_addr_o     (reg_w_addr),
+
+    .imm_signed_o     (imm_signed),
+
+    .incr_pc_o        (incr_pc)
   );
 
-  datapath u_datapath(
+  datapath u_datapath (
     .rst_n_i          (rst_n_i),
     .clk_i            (clk_i),
 
@@ -135,6 +153,8 @@ module core(
     .arith_out_i      (arith_out),
     .logical_out_i    (logical_out),
     .shift_out_i      (shift_out),
+
+    .imm_signed_i     (imm_signed),
     
     .x_op1_o          (x_op1),
     .x_op2_o          (x_op2),
@@ -144,7 +164,7 @@ module core(
     .w_mux_o          (w_mux)
   );
 
-  arith u_arith(
+  arith u_arith (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
@@ -156,7 +176,7 @@ module core(
     .res_o          (arith_out)
   );
 
-  logical u_logical(
+  logical u_logical (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
@@ -168,7 +188,7 @@ module core(
     .res_o          (logical_out)
   );
 
-  shift u_shift(
+  shift u_shift (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 

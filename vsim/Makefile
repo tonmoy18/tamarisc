@@ -51,6 +51,7 @@ VERILATOR_FLAGS += --coverage
 #VERILATOR_FLAGS += --debug
 # Add this trace to get a backtrace in gdb
 #VERILATOR_FLAGS += --gdbbt
+VERILATOR_FLAGS += -DIM_HEXFILE=\"${HEX}\"
 
 ######################################################################
 default: run

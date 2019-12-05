@@ -23,6 +23,8 @@ module mem(
   data_out_o
 );
 
+  parameter string memfile = "hex/zeros.hex";
+
   parameter int MEMSIZE = 4096;  // Has to be multiple of 4
 
   localparam int MEMSIZE_BY_4 = MEMSIZE / 4;
@@ -43,21 +45,16 @@ module mem(
       data_out_o <= 32'h0000;
     end else begin
       if (wen_i == 1'b0) begin
-        data_out_o <= data[addr_i];
+        data_out_o <= data[addr_i/4];
       end else begin
         data_out_o <= 32'h0000;
-        data[addr_i] <= data_in_i;
+        data[addr_i/4] <= data_in_i;
       end
     end
   end
 
   initial begin
-    data[0] = 'h2081B3;
-    data[1] = 'd7;
-    data[2] = 'd9;
-    data[3] = 'd11;
-    data[4] = 'd13;
-    data[5] = 'd15;
+    $readmemh(memfile, data);
   end
 
 endmodule

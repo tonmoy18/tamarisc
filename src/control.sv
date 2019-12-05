@@ -34,7 +34,11 @@ module control(
   x_funct3_o,
   x_funct7_30_o,
 
-  reg_w_addr_o
+  reg_w_addr_o,
+
+  imm_signed_o,
+
+  incr_pc_o
 );
 
   import proc_pkg::*;
@@ -57,6 +61,8 @@ module control(
   output logic x_funct7_30_o;
 
   output logic [4:0] reg_w_addr_o;
+  output logic [31:0] imm_signed_o;
+  output logic incr_pc_o;
 
   // Local signals
   logic [2:0] x_funct3_q, x_funct3_next;
@@ -64,12 +70,12 @@ module control(
   logic [31:0] reg1_addr, reg2_addr;
   logic [6:0] d_opcode;
 
-  logic [6:0] x_opcode;
-  logic [6:0] m_opcode;
-  logic [6:0] w_opcode;
+  logic [6:0] x_opcode, next_x_opcode;
+  logic [6:0] m_opcode, next_m_opcode;
+  logic [6:0] w_opcode, next_w_opcode;
 
-  logic [4:0] d_rd, x_rd, m_rd;
-  logic [4:0] next_x_rd, next_m_rd;
+  logic [4:0] d_rd, x_rd, m_rd, w_rd;
+  logic [4:0] next_x_rd, next_m_rd, next_w_rd;
 
   assign reg1_addr_o = reg1_addr;
   assign reg2_addr_o = reg2_addr;
@@ -82,6 +88,14 @@ module control(
   // TODO: stall etc logic needed
   assign next_x_rd = d_rd;
   assign next_m_rd = x_rd;
+  assign next_w_rd = m_rd;
+
+  assign next_x_opcode = d_opcode;
+  assign next_m_opcode = x_opcode;
+  assign next_w_opcode = m_opcode;
+
+  assign incr_pc_o = 1'b1;
+
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin      
@@ -90,12 +104,14 @@ module control(
       m_opcode <= '0;
       m_rd <= '0;
       w_opcode <= '0;
+      w_rd <= '0;
     end else begin
-      x_opcode <= d_opcode;
+      x_opcode <= next_x_opcode;
       x_rd <= next_x_rd;
-      m_opcode <= x_opcode;
+      m_opcode <= next_m_opcode;
       m_rd <= next_m_rd;
-      w_opcode <= m_opcode;
+      w_opcode <= next_w_opcode;
+      w_rd <= next_w_rd;
     end
   end
 
@@ -110,55 +126,66 @@ module control(
   end
 
   always_comb begin
+    x_funct3_next = '0;
+    x_funct7_30_next = 1'b0;
+    reg1_addr = '0;
+    reg2_addr = '0;
+    x_op1_mux_sel_o = REG1_DATA;
+    x_op2_mux_sel_o = REG2_DATA;
+    imm_signed_o = '0;
+    case (d_opcode)
+      `RTYPE_OPCODE: begin
+        x_funct3_next = d_inst_i[14:12];
+        x_funct7_30_next = d_inst_i[30];
+        reg1_addr = d_inst_i[19:15];
+        reg2_addr = d_inst_i[24:20];
+        x_op1_mux_sel_o = REG1_DATA;
+        x_op2_mux_sel_o = REG2_DATA;
+      end
+      `ITYPE_ALU_OPCODE: begin
+        x_funct3_next = d_inst_i[14:12];
+        x_funct7_30_next = d_inst_i[30]; // May not be used for some insts
+        reg1_addr = d_inst_i[19:15];
+        x_op1_mux_sel_o = REG1_DATA;
+        x_op2_mux_sel_o = IMM_SIGNED;
+        imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
+      end
+    endcase
+  end
+
+  always_comb begin
+    alu_mux_sel_o = ARITH;
     case (x_opcode)
       `RTYPE_OPCODE: begin
         case (x_funct3_o)
-          3'b000:
+          `RTYPE_FUNCT3_ADD:
+            alu_mux_sel_o = ARITH;
+        endcase
+      end
+      `ITYPE_ALU_OPCODE: begin
+        case (x_funct3_o)
+          `ITYPE_FUNCT3_ADD:
             alu_mux_sel_o = ARITH;
         endcase
       end
     endcase
   end
 
-  always_comb begin
-    case (d_opcode)
-      `RTYPE_OPCODE: begin
-        x_funct3_next = d_inst_i[14:12];
-        x_funct7_30_next = d_inst_i[30];
-      end
-    endcase
-  end
 
   always_comb begin
-    case (d_opcode)
-      `RTYPE_OPCODE: begin
-        reg1_addr = d_inst_i[19:15];
-        reg2_addr = d_inst_i[24:20];
-      end
-    endcase
-  end
-
-  always_comb begin
-    case (d_opcode) 
-      `RTYPE_OPCODE: begin
-        x_op1_mux_sel_o = REG1_DATA;
-        x_op2_mux_sel_o = REG2_DATA;
-      end
-    endcase
-  end
-
-  always_comb begin
+    w_mux_sel_o = REG_WRITE;
     case (m_opcode)
-      `RTYPE_OPCODE: begin
+      `RTYPE_OPCODE, `ITYPE_ALU_OPCODE: begin
         w_mux_sel_o = REG_WRITE;
       end
     endcase
   end
 
   always_comb begin
+    reg_w_addr_o = '0;
     case (w_opcode)
-    `RTYPE_OPCODE: begin
-      reg_w_addr_o = m_rd;
+    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE: begin
+      reg_w_addr_o = w_rd;
     end
     endcase
   end
