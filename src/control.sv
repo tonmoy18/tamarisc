@@ -158,12 +158,12 @@ module control(
     case (x_opcode)
       `RTYPE_OPCODE: begin
         case (x_funct3_o)
-          `RTYPE_FUNCT3_ADD, `RTYPE_FUNCT3_SUB:
+          `FUNCT3_ADD, `FUNCT3_SUB:
             alu_mux_sel_o = ARITH;
-          `RTYPE_FUNCT3_SLL, `RTYPE_FUNCT3_SRL, `RTYPE_FUNCT3_SRA:
+          `FUNCT3_SLL, `FUNCT3_SRL, `FUNCT3_SRA:
             alu_mux_sel_o = SHIFT;
-          `RTYPE_FUNCT3_SLT, `RTYPE_FUNCT3_SLTU, `RTYPE_FUNCT3_XOR,
-          `RTYPE_FUNCT3_OR, `RTYPE_FUNCT3_AND:
+          `FUNCT3_SLT, `FUNCT3_SLTU, `FUNCT3_XOR,
+          `FUNCT3_OR, `FUNCT3_AND:
             alu_mux_sel_o = LOGICAL;
         endcase
       end
