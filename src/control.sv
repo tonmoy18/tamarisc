@@ -144,7 +144,10 @@ module control(
       end
       `ITYPE_ALU_OPCODE: begin
         x_funct3_next = d_inst_i[14:12];
-        x_funct7_30_next = d_inst_i[30]; // May not be used for some insts
+        if (d_inst_i[14:12] == `FUNCT3_SRA ||
+            d_inst_i[14:12] == `FUNCT3_SRL) begin
+            x_funct7_30_next = d_inst_i[30];
+        end
         reg1_addr = d_inst_i[19:15];
         x_op1_mux_sel_o = REG1_DATA;
         x_op2_mux_sel_o = IMM_SIGNED;
@@ -156,7 +159,7 @@ module control(
   always_comb begin
     alu_mux_sel_o = ARITH;
     case (x_opcode)
-      `RTYPE_OPCODE: begin
+      `RTYPE_OPCODE, `ITYPE_OPCODE: begin
         case (x_funct3_o)
           `FUNCT3_ADD, `FUNCT3_SUB:
             alu_mux_sel_o = ARITH;
@@ -165,12 +168,6 @@ module control(
           `FUNCT3_SLT, `FUNCT3_SLTU, `FUNCT3_XOR,
           `FUNCT3_OR, `FUNCT3_AND:
             alu_mux_sel_o = LOGICAL;
-        endcase
-      end
-      `ITYPE_ALU_OPCODE: begin
-        case (x_funct3_o)
-          `ITYPE_FUNCT3_ADD:
-            alu_mux_sel_o = ARITH;
         endcase
       end
     endcase
