@@ -105,7 +105,7 @@ module control(
     end
   end
   
-  assign incr_pc_o = 1'b1;
+  assign incr_pc_o = ~stall;
   
   assign stall = conflict; // TODO: need other logic for stall
 
