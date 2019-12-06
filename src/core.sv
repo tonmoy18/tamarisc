@@ -70,6 +70,7 @@ module core(
 
   logic [31:0] pc_val;
   logic incr_pc;
+  logic stall;
 
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
@@ -85,7 +86,7 @@ module core(
     .clk_i          (clk_i),
 
     .incr_pc_i      (incr_pc),
-
+     
     .pc_o           (pc_val)
   );
 
@@ -134,7 +135,9 @@ module core(
 
     .imm_signed_o     (imm_signed),
 
-    .incr_pc_o        (incr_pc)
+    .incr_pc_o        (incr_pc),
+      
+    .stall_o          (stall)
   );
 
   datapath u_datapath (
@@ -199,11 +202,5 @@ module core(
 
     .res_o          (shift_out)
   );
-
-  always_ff @(posedge clk_i) begin
-    if (rst_n_i == 1'b1) begin
-      $display("**INFO** im_addr: %x, d_inst: %x, x_op1: %x, x_op2: %x", im_addr_o, d_inst, x_op1, x_op2);
-    end
-  end
 
 endmodule
