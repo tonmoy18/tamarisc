@@ -38,7 +38,9 @@ module control(
 
   imm_signed_o,
 
-  incr_pc_o
+  incr_pc_o,
+  
+  stall_o
 );
 
   import proc_pkg::*;
@@ -63,6 +65,7 @@ module control(
   output logic [4:0] reg_w_addr_o;
   output logic [31:0] imm_signed_o;
   output logic incr_pc_o;
+  output logic stall_o;
 
   // Local signals
   logic [2:0] x_funct3_q, x_funct3_next;
@@ -76,7 +79,9 @@ module control(
 
   logic [4:0] d_rd, x_rd, m_rd, w_rd;
   logic [4:0] next_x_rd, next_m_rd, next_w_rd;
+  logic conflict;
 
+  // Assign outputs
   assign reg1_addr_o = reg1_addr;
   assign reg2_addr_o = reg2_addr;
   assign x_funct3_o = x_funct3_q;
@@ -85,17 +90,24 @@ module control(
   assign d_opcode = d_inst_i[6:0];
   assign d_rd = d_inst_i[11:7];
 
-  // TODO: stall etc logic needed
-  assign next_x_rd = d_rd;
-  assign next_m_rd = x_rd;
-  assign next_w_rd = m_rd;
-
-  assign next_x_opcode = d_opcode;
-  assign next_m_opcode = x_opcode;
-  assign next_w_opcode = m_opcode;
-
+  always_comb begin
+    next_m_rd = x_rd;
+    next_w_rd = m_rd;
+    next_m_opcode = x_opcode;
+    next_w_opcode = m_opcode;
+    
+    if (stall == 1'b0) begin
+      next_x_rd = d_rd;
+      next_x_opcode = d_opcode;
+    end else begin
+      next_x_rd = '0;
+      next_x_opcode = '0;
+    end
+  end
+  
   assign incr_pc_o = 1'b1;
-
+  
+  assign stall = conflict; // TODO: need other logic for stall
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin      
@@ -123,6 +135,17 @@ module control(
       x_funct3_q <= x_funct3_next;
       x_funct7_30_q <= x_funct7_30_next;
     end
+  end
+  
+  always_comb begin
+    if (reg1_addr != '0 &&
+        (reg1_addr == x_rd || reg1_addr == m_rd))
+      conflict = 1'b1;
+    else if (reg2_addr != '0 &&
+             (reg2_addr == x_rd || reg_addr2 == m_rd))
+      conflict = 1'b1;
+    else
+      conflict = 1'b0;
   end
 
   always_comb begin
