@@ -18,15 +18,15 @@
 `include "proc_define.sv"
 
 module shift(
-    rst_n_i,
-    clk_i,
+  rst_n_i,
+  clk_i,
 
-    funct_i,
+  funct_i,
 
-    op1_i,
-    op2_i,
+  op1_i,
+  op2_i,
 
-    res_o
+  res_o
 );
 
   // Input/Output Definitions
@@ -44,7 +44,12 @@ module shift(
 
   always_comb begin
     case (funct_i)
-      // TODO
+      `FUNCT3_SLL:
+        res = op1_i >> op2_i;
+      `FUNCT3_SRL:
+        res = op1_i << op2_i;
+      `FUNCT3_SRA:
+        res = $signed(op1_i) >>> op2_i;
     endcase
   end
 
