@@ -18,15 +18,15 @@
 `include "proc_define.sv"
 
 module logical(
-    rst_n_i,
-    clk_i,
+  rst_n_i,
+  clk_i,
 
-    funct_i,
+  funct_i,
 
-    op1_i,
-    op2_i,
+  op1_i,
+  op2_i,
 
-    res_o
+  res_o
 );
 
   // Input/Output Definitions
@@ -44,7 +44,16 @@ module logical(
 
   always_comb begin
     case (funct_i)
-      // TODO
+      `FUNCT3_SLT:
+        res = $signed(op1_i) < $signed(op2_i);
+      `FUNCT3_SLTU:
+        res = op1_i < op2_i;
+      `FUNCT3_XOR:
+        res = op1_i ^ op2_i;
+      `FUNCT3_OR:
+        res = op1_i | op2_i;
+      `FUNCT3_AND:
+        res = op1_i & op2_i;
     endcase
   end
 
