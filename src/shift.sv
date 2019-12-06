@@ -21,7 +21,8 @@ module shift(
   rst_n_i,
   clk_i,
 
-  funct_i,
+  funct3_i,
+  funct7_i,
 
   op1_i,
   op2_i,
@@ -33,6 +34,7 @@ module shift(
   input logic rst_n_i;
   input logic clk_i;
   input logic [3:0] funct_i;
+  input logic funct7_i
   input logic [31:0] op1_i;
   input logic [31:0] op2_i;
   output logic [31:0] res_o;
@@ -43,13 +45,12 @@ module shift(
   assign res_o = res;
 
   always_comb begin
-    case (funct_i)
+    case (funct3_i)
       `FUNCT3_SLL:
         res = op1_i >> op2_i;
-      `FUNCT3_SRL:
-        res = op1_i << op2_i;
-      `FUNCT3_SRA:
-        res = $signed(op1_i) >>> op2_i;
+      `FUNCT3_SRL, `FUNCT3_SRA:
+        if (funct7_i) res = $signed(op1_i) >>> op2_i;
+        else res = op1_i << op2_i;
     endcase
   end
 
