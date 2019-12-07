@@ -54,9 +54,8 @@ module core(
 
   logic [31:0] x_op1;
   logic [31:0] x_op2;
-  logic arith_funct;
-  logic [3:0] logical_funct;
-  logic [3:0] shift_funct;
+  logic [3:0] x_funct3;
+  logic x_funct7_30;
   logic [31:0] arith_out;
   logic [31:0] logical_out;
   logic [31:0] shift_out;
@@ -71,6 +70,7 @@ module core(
 
   logic [31:0] pc_val;
   logic incr_pc;
+  logic stall;
 
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
@@ -86,7 +86,7 @@ module core(
     .clk_i          (clk_i),
 
     .incr_pc_i      (incr_pc),
-
+     
     .pc_o           (pc_val)
   );
 
@@ -129,13 +129,15 @@ module core(
     .x_op1_mux_sel_o  (x_op1_mux_sel),
     .x_op2_mux_sel_o  (x_op2_mux_sel),
 
-    .x_funct3_o       (),
-    .x_funct7_30_o    (arith_funct),
+    .x_funct3_o       (x_funct3),
+    .x_funct7_30_o    (x_funct7_30),
     .reg_w_addr_o     (reg_w_addr),
 
     .imm_signed_o     (imm_signed),
 
-    .incr_pc_o        (incr_pc)
+    .incr_pc_o        (incr_pc),
+      
+    .stall_o          (stall)
   );
 
   datapath u_datapath (
@@ -168,7 +170,7 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .funct_i        (arith_funct),
+    .funct_i        (x_funct7_30),
 
     .op1_i          (x_op1),
     .op2_i          (x_op2),
@@ -180,7 +182,7 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .funct_i        (logical_funct),
+    .funct_i        (x_funct3),
 
     .op1_i          (x_op1),
     .op2_i          (x_op2),
@@ -192,18 +194,13 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .funct_i        (shift_funct),
+    .funct3_i       (shift_funct),
+    .funct7_i       (x_funct7_30),
 
     .op1_i          (x_op1),
     .op2_i          (x_op2),
 
     .res_o          (shift_out)
   );
-
-  always_ff @(posedge clk_i) begin
-    if (rst_n_i == 1'b1) begin
-      $display("**INFO** im_addr: %x, d_inst: %x, x_op1: %x, x_op2: %x", im_addr_o, d_inst, x_op1, x_op2);
-    end
-  end
 
 endmodule

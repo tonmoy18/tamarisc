@@ -18,21 +18,23 @@
 `include "proc_define.sv"
 
 module shift(
-    rst_n_i,
-    clk_i,
+  rst_n_i,
+  clk_i,
 
-    funct_i,
+  funct3_i,
+  funct7_i,
 
-    op1_i,
-    op2_i,
+  op1_i,
+  op2_i,
 
-    res_o
+  res_o
 );
 
   // Input/Output Definitions
   input logic rst_n_i;
   input logic clk_i;
-  input logic [3:0] funct_i;
+  input logic [3:0] funct3_i;
+  input logic funct7_i;
   input logic [31:0] op1_i;
   input logic [31:0] op2_i;
   output logic [31:0] res_o;
@@ -43,8 +45,12 @@ module shift(
   assign res_o = res;
 
   always_comb begin
-    case (funct_i)
-      // TODO
+    case (funct3_i)
+      `FUNCT3_SLL:
+        res = op1_i >> op2_i;
+      `FUNCT3_SRL, `FUNCT3_SRA:
+        if (funct7_i) res = $signed(op1_i) >>> op2_i;
+        else res = op1_i << op2_i;
     endcase
   end
 
