@@ -18,6 +18,7 @@
 `define DATA_WIDTH 32
 
 `define     RTYPE_OPCODE      7'b0110011
+`define     ITYPE_ALU_OPCODE  7'b0010011
 
 `define     FUNCT3_ADD  3'b000
 `define     FUNCT3_SUB  3'b000

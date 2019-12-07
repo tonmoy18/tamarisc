@@ -142,7 +142,7 @@ module control(
         (reg1_addr == x_rd || reg1_addr == m_rd))
       conflict = 1'b1;
     else if (reg2_addr != '0 &&
-             (reg2_addr == x_rd || reg_addr2 == m_rd))
+             (reg2_addr == x_rd || reg2_addr == m_rd))
       conflict = 1'b1;
     else
       conflict = 1'b0;
@@ -182,7 +182,7 @@ module control(
   always_comb begin
     alu_mux_sel_o = ARITH;
     case (x_opcode)
-      `RTYPE_OPCODE, `ITYPE_OPCODE: begin
+      `RTYPE_OPCODE, `ITYPE_ALU_OPCODE: begin
         case (x_funct3_o)
           `FUNCT3_ADD, `FUNCT3_SUB:
             alu_mux_sel_o = ARITH;
@@ -190,7 +190,7 @@ module control(
             alu_mux_sel_o = SHIFT;
           `FUNCT3_SLT, `FUNCT3_SLTU, `FUNCT3_XOR,
           `FUNCT3_OR, `FUNCT3_AND:
-            alu_mux_sel_o = LOGICAL;
+            alu_mux_sel_o = LOGIC;
         endcase
       end
     endcase

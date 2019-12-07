@@ -33,8 +33,8 @@ module shift(
   // Input/Output Definitions
   input logic rst_n_i;
   input logic clk_i;
-  input logic [3:0] funct_i;
-  input logic funct7_i
+  input logic [3:0] funct3_i;
+  input logic funct7_i;
   input logic [31:0] op1_i;
   input logic [31:0] op2_i;
   output logic [31:0] res_o;

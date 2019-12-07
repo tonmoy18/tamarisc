@@ -37,13 +37,14 @@ module fetch(
   output logic [31:0] inst_o;
 
   assign im_addr_o = pc_i;
+  assign inst_o = im_dout_i;
 
-  always_ff @(posedge clk_i, negedge rst_n_i) begin
-    if (rst_n_i == 1'b0) begin
-      inst_o <= '0;
-    end else begin
-      inst_o <= im_dout_i;
-    end
-  end
+  // always_ff @(posedge clk_i, negedge rst_n_i) begin
+  //   if (rst_n_i == 1'b0) begin
+  //     inst_o <= '0;
+  //   end else begin
+  //     inst_o <= im_dout_i;
+  //   end
+  // end
 
 endmodule
