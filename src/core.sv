@@ -56,6 +56,7 @@ module core(
   logic [31:0] x_op2;
   logic [3:0] x_funct3;
   logic x_funct7_30;
+  logic x_is_branch_op;
   logic [31:0] arith_out;
   logic [31:0] logical_out;
   logic [31:0] shift_out;
@@ -69,8 +70,10 @@ module core(
   logic [4:0] reg2_addr;
 
   logic [31:0] pc_val;
+  logic [31:0] pc_val_d2;
   logic incr_pc;
   logic stall;
+  logic branch_taken;
 
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
@@ -86,8 +89,12 @@ module core(
     .clk_i          (clk_i),
 
     .incr_pc_i      (incr_pc),
+    .branch_taken_i (branch_taken),
+    .logical_out_i  (logical_out),
      
-    .pc_o           (pc_val)
+    .pc_o           (pc_val),
+
+    .pc_d2_o        (pc_val_d2)
   );
 
   fetch u_fetch (
@@ -122,6 +129,8 @@ module core(
     
     .d_inst_i         (d_inst),
 
+    .branch_taken_i   (branch_taken),
+
     .reg1_addr_o      (reg1_addr),
     .reg2_addr_o      (reg2_addr),
 
@@ -131,6 +140,7 @@ module core(
 
     .x_funct3_o       (x_funct3),
     .x_funct7_30_o    (x_funct7_30),
+    .x_is_branch_op_o (x_is_branch_op),
     .reg_w_addr_o     (reg_w_addr),
 
     .imm_signed_o     (imm_signed),
@@ -157,6 +167,8 @@ module core(
     .shift_out_i      (shift_out),
 
     .imm_signed_i     (imm_signed),
+
+    .pc_val_d2_i      (pc_val_d2),
     
     .x_op1_o          (x_op1),
     .x_op2_o          (x_op2),
@@ -183,11 +195,13 @@ module core(
     .clk_i          (clk_i),
 
     .funct_i        (x_funct3),
+    .is_branch_op_i (x_is_branch_op),
 
     .op1_i          (x_op1),
     .op2_i          (x_op2),
 
-    .res_o          (logical_out)
+    .res_o          (logical_out),
+    .branch_taken_o (branch_taken)
   );
 
   shift u_shift (

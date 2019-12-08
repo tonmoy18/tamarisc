@@ -21,6 +21,7 @@ module control(
   clk_i,
 
   d_inst_i,
+  branch_taken_i,
 
   reg1_addr_o,
   reg2_addr_o,
@@ -33,6 +34,7 @@ module control(
 
   x_funct3_o,
   x_funct7_30_o,
+  x_is_branch_op_o,
 
   reg_w_addr_o,
 
@@ -48,8 +50,7 @@ module control(
   input logic rst_n_i, clk_i;
 
   input logic [31:0] d_inst_i;
-  // input logic [6:0]  x_opcode_i;
-  // input logic [6:0]  m_opcode_i;
+  input logic branch_taken_i;
 
   output logic [4:0] reg1_addr_o;
   output logic [4:0] reg2_addr_o;
@@ -61,6 +62,7 @@ module control(
 
   output logic [2:0] x_funct3_o;
   output logic x_funct7_30_o;
+  output logic x_is_branch_op_o;
 
   output logic [4:0] reg_w_addr_o;
   output logic [31:0] imm_signed_o;
@@ -70,6 +72,7 @@ module control(
   // Local signals
   logic [2:0] x_funct3_q, x_funct3_next;
   logic x_funct7_30_q, x_funct7_30_next;
+  logic x_is_branch_op_next, x_is_branch_op_q;
   logic [31:0] reg1_addr, reg2_addr;
   logic [6:0] d_opcode;
 
@@ -86,26 +89,36 @@ module control(
   assign reg2_addr_o = reg2_addr;
   assign x_funct3_o = x_funct3_q;
   assign x_funct7_30_o = x_funct7_30_q ;
+  assign x_is_branch_op_o = x_is_branch_op_q;
+  assign incr_pc_o = ~stall;
+  assign stall_o = stall;
 
   assign d_opcode = d_inst_i[6:0];
   assign d_rd = d_inst_i[11:7];
 
   always_comb begin
-    next_m_rd = x_rd;
-    next_w_rd = m_rd;
-    next_m_opcode = x_opcode;
-    next_w_opcode = m_opcode;
-    
-    if (stall == 1'b0) begin
-      next_x_rd = d_rd;
-      next_x_opcode = d_opcode;
-    end else begin
+    if (branch_taken_i) begin
+      next_m_rd = '0;
+      next_w_rd = '0;
+      next_m_opcode = '0;
+      next_w_opcode = '0;
       next_x_rd = '0;
       next_x_opcode = '0;
+    end else begin
+      next_m_rd = x_rd;
+      next_w_rd = m_rd;
+      next_m_opcode = x_opcode;
+      next_w_opcode = m_opcode;
+      
+      if (stall == 1'b0) begin
+        next_x_rd = d_rd;
+        next_x_opcode = d_opcode;
+      end else begin
+        next_x_rd = '0;
+        next_x_opcode = '0;
+      end
     end
   end
-  
-  assign incr_pc_o = ~stall;
   
   assign stall = conflict; // TODO: need other logic for stall
 
@@ -131,9 +144,11 @@ module control(
     if (rst_n_i == 1'b0) begin
       x_funct3_q <= '0;
       x_funct7_30_q <= '0;
+      x_is_branch_op_q <= '0;
     end else begin
       x_funct3_q <= x_funct3_next;
       x_funct7_30_q <= x_funct7_30_next;
+      x_is_branch_op_q <= x_is_branch_op_next;
     end
   end
   
@@ -151,6 +166,7 @@ module control(
   always_comb begin
     x_funct3_next = '0;
     x_funct7_30_next = 1'b0;
+    x_is_branch_op_next = 1'b0;
     reg1_addr = '0;
     reg2_addr = '0;
     x_op1_mux_sel_o = REG1_DATA;
@@ -176,6 +192,28 @@ module control(
         x_op2_mux_sel_o = IMM_SIGNED;
         imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
       end
+      `LUI_OPCODE: begin
+        x_funct3_next = d_inst_i[14:12];
+        x_op1_mux_sel_o = REG1_DATA;
+        x_op2_mux_sel_o = IMM_SIGNED;
+        imm_signed_o = { d_inst_i[31:12], 12'h000};
+      end
+      `AUIPC_OPCODE: begin
+        x_funct3_next = d_inst_i[14:12];
+        reg1_addr = d_inst_i[19:15];
+        x_op1_mux_sel_o = PC_VAL_D2;
+        x_op2_mux_sel_o = IMM_SIGNED;
+        imm_signed_o = { d_inst_i[31:12], 12'h000};
+      end
+      `BRANCH_OPCODE: begin
+        x_is_branch_op_next = 1'b1;
+        x_funct3_next = d_inst_i[14:12];
+        reg1_addr = d_inst_i[19:15];
+        reg2_addr = d_inst_i[24:20];
+        x_op1_mux_sel_o = REG1_DATA;
+        x_op2_mux_sel_o = REG2_DATA;
+        imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[7], d_inst_i[30:25], d_inst_i[11:8], 1'b0};
+      end
     endcase
   end
 
@@ -193,15 +231,21 @@ module control(
             alu_mux_sel_o = LOGIC;
         endcase
       end
+      `LUI_OPCODE, `AUIPC_OPCODE: begin
+        alu_mux_sel_o = ARITH;
+      end
+      `BRANCH_OPCODE: begin
+        alu_mux_sel_o = LOGIC;
+      end
     endcase
   end
 
 
   always_comb begin
-    w_mux_sel_o = REG_WRITE;
+    w_mux_sel_o = ALU;
     case (m_opcode)
-      `RTYPE_OPCODE, `ITYPE_ALU_OPCODE: begin
-        w_mux_sel_o = REG_WRITE;
+      `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE: begin
+        w_mux_sel_o = ALU;
       end
     endcase
   end
@@ -209,7 +253,7 @@ module control(
   always_comb begin
     reg_w_addr_o = '0;
     case (w_opcode)
-    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE: begin
+    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE: begin
       reg_w_addr_o = w_rd;
     end
     endcase

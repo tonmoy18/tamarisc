@@ -46,12 +46,16 @@ module regfile(
   always_comb begin
     if (r1_addr_i == '0) begin
       d1out_o = '0;
+    end else if (r1_addr_i == w_addr_i) begin
+      d1out_o = din_i;
     end else begin
       d1out_o = reg_content[r1_addr_i];
     end
 
     if (r2_addr_i == '0) begin
       d2out_o = '0;
+    end else if (r2_addr_i == w_addr_i) begin
+      d2out_o = din_i;
     end else begin
       d2out_o = reg_content[r2_addr_i];
     end
@@ -70,8 +74,8 @@ module regfile(
   end
 
   initial begin
-    reg_content[1] = 'd7;
-    reg_content[2] = 'd5;
+    reg_content[1] = 'd4;
+    reg_content[2] = 'd7;
     reg_content[3] = 'd0;
     reg_content[4] = 'd3;
     reg_content[5] = 'd9;
