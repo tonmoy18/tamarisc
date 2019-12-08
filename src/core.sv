@@ -54,6 +54,8 @@ module core(
 
   logic [31:0] x_op1;
   logic [31:0] x_op2;
+  logic [31:0] x_arith_op1;
+  logic [31:0] x_arith_op2;
   logic [3:0] x_funct3;
   logic x_funct7_30;
   logic x_is_branch_op;
@@ -75,9 +77,12 @@ module core(
   logic stall;
   logic branch_taken;
 
+  logic x_logical_en;
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
   x_op2_mux_sel_t x_op2_mux_sel;
+  x_op1_mux_sel_t x_arith_op1_mux_sel;
+  x_op2_mux_sel_t x_arith_op2_mux_sel;
   w_mux_sel_t w_mux_sel;
 
   // Main body of module
@@ -88,9 +93,10 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
+    .stall_i        (stall),
     .incr_pc_i      (incr_pc),
     .branch_taken_i (branch_taken),
-    .logical_out_i  (logical_out),
+    .arith_out_i    (arith_out),
      
     .pc_o           (pc_val),
 
@@ -102,6 +108,7 @@ module core(
     .clk_i          (clk_i),
     
     .pc_i           (pc_val),
+    .stall_i        (stall),
     .im_dout_i      (im_dout_i),
 
     .im_addr_o      (im_addr_o),
@@ -124,58 +131,66 @@ module core(
   );
 
   control u_control (
-    .rst_n_i          (rst_n_i),
-    .clk_i            (clk_i),
+    .rst_n_i                (rst_n_i),
+    .clk_i                  (clk_i),
     
-    .d_inst_i         (d_inst),
+    .d_inst_i               (d_inst),
 
-    .branch_taken_i   (branch_taken),
+    .branch_taken_i         (branch_taken),
 
-    .reg1_addr_o      (reg1_addr),
-    .reg2_addr_o      (reg2_addr),
+    .reg1_addr_o            (reg1_addr),
+    .reg2_addr_o            (reg2_addr),
 
-    .alu_mux_sel_o    (alu_mux_sel),
-    .x_op1_mux_sel_o  (x_op1_mux_sel),
-    .x_op2_mux_sel_o  (x_op2_mux_sel),
+    .alu_mux_sel_o          (alu_mux_sel),
+    .x_op1_mux_sel_o        (x_op1_mux_sel),
+    .x_op2_mux_sel_o        (x_op2_mux_sel),
+    .x_arith_op1_mux_sel_o  (x_arith_op1_mux_sel),
+    .x_arith_op2_mux_sel_o  (x_arith_op2_mux_sel),
 
-    .x_funct3_o       (x_funct3),
-    .x_funct7_30_o    (x_funct7_30),
-    .x_is_branch_op_o (x_is_branch_op),
-    .reg_w_addr_o     (reg_w_addr),
+    .x_funct3_o             (x_funct3),
+    .x_funct7_30_o          (x_funct7_30),
+    .x_is_branch_op_o       (x_is_branch_op),
+    .reg_w_addr_o           (reg_w_addr),
 
-    .imm_signed_o     (imm_signed),
+    .x_logical_en_o         (x_logical_en),
 
-    .incr_pc_o        (incr_pc),
+    .imm_signed_o           (imm_signed),
+
+    .incr_pc_o              (incr_pc),
       
-    .stall_o          (stall)
+    .stall_o                (stall)
   );
 
   datapath u_datapath (
-    .rst_n_i          (rst_n_i),
-    .clk_i            (clk_i),
+    .rst_n_i                (rst_n_i),
+    .clk_i                  (clk_i),
 
-    .alu_mux_sel_i    (alu_mux_sel),
-    .x_op1_mux_sel_i  (x_op1_mux_sel),
-    .x_op2_mux_sel_i  (x_op2_mux_sel),
-    .w_mux_sel_i      (w_mux_sel),
+    .alu_mux_sel_i          (alu_mux_sel),
+    .x_op1_mux_sel_i        (x_op1_mux_sel),
+    .x_op2_mux_sel_i        (x_op2_mux_sel),
+    .x_arith_op1_mux_sel_i  (x_arith_op1_mux_sel),
+    .x_arith_op2_mux_sel_i  (x_arith_op2_mux_sel),
+    .w_mux_sel_i            (w_mux_sel),
 
-    .reg1_data_i      (reg_d1out),
-    .reg2_data_i      (reg_d2out),
+    .reg1_data_i            (reg_d1out),
+    .reg2_data_i            (reg_d2out),
 
-    .arith_out_i      (arith_out),
-    .logical_out_i    (logical_out),
-    .shift_out_i      (shift_out),
+    .arith_out_i            (arith_out),
+    .logical_out_i          (logical_out),
+    .shift_out_i            (shift_out),
 
-    .imm_signed_i     (imm_signed),
+    .imm_signed_i           (imm_signed),
 
-    .pc_val_d2_i      (pc_val_d2),
+    .pc_val_d2_i            (pc_val_d2),
     
-    .x_op1_o          (x_op1),
-    .x_op2_o          (x_op2),
+    .x_op1_o                (x_op1),
+    .x_op2_o                (x_op2),
+    .x_arith_op1_o          (x_arith_op1),
+    .x_arith_op2_o          (x_arith_op2),
 
-    .m_alu_data_o     (m_alu_data),
+    .m_alu_data_o           (m_alu_data),
 
-    .w_mux_o          (w_mux)
+    .w_mux_o                (w_mux)
   );
 
   arith u_arith (
@@ -184,8 +199,8 @@ module core(
 
     .funct_i        (x_funct7_30),
 
-    .op1_i          (x_op1),
-    .op2_i          (x_op2),
+    .op1_i          (x_arith_op1),
+    .op2_i          (x_arith_op2),
 
     .res_o          (arith_out)
   );
@@ -193,6 +208,8 @@ module core(
   logical u_logical (
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
+
+    .en_i           (x_logical_en),
 
     .funct_i        (x_funct3),
     .is_branch_op_i (x_is_branch_op),

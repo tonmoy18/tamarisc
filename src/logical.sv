@@ -21,6 +21,8 @@ module logical(
   rst_n_i,
   clk_i,
 
+  en_i,
+
   funct_i,
   is_branch_op_i,
 
@@ -34,6 +36,7 @@ module logical(
   // Input/Output Definitions
   input logic rst_n_i;
   input logic clk_i;
+  input logic en_i;
   input logic [3:0] funct_i;
   input logic is_branch_op_i;
   input logic [31:0] op1_i;
@@ -50,34 +53,37 @@ module logical(
 
   always_comb begin
     res = '0;
-    if (is_branch_op_i == 1'b0) begin
-      case (funct_i)
-        `FUNCT3_SLT:
-          res = $signed(op1_i) < $signed(op2_i);
-        `FUNCT3_SLTU:
-          res = op1_i < op2_i;
-        `FUNCT3_XOR:
-          res = op1_i ^ op2_i;
-        `FUNCT3_OR:
-          res = op1_i | op2_i;
-        `FUNCT3_AND:
-          res = op1_i & op2_i;
-      endcase
-    end else begin
-      case (funct_i)
-        `FUNCT3_EQ:
-          branch_taken = (op1_i == op2_i);
-        `FUNCT3_NE:
-          branch_taken = (op1_i != op2_i);
-        `FUNCT3_LT:
-          branch_taken = ($signed(op1_i) < $signed(op2_i));
-        `FUNCT3_GE:
-          branch_taken = ($signed(op1_i) >= $signed(op2_i));
-        `FUNCT3_LTU:
-          branch_taken = (op1_i < op2_i);
-        `FUNCT3_GEU:
-          branch_taken = (op1_i >= op2_i);
-      endcase
+    branch_taken = 1'b0;
+    if (en_i == 1'b1) begin
+      if (is_branch_op_i == 1'b0) begin
+        case (funct_i)
+          `FUNCT3_SLT:
+            res = $signed(op1_i) < $signed(op2_i);
+          `FUNCT3_SLTU:
+            res = op1_i < op2_i;
+          `FUNCT3_XOR:
+            res = op1_i ^ op2_i;
+          `FUNCT3_OR:
+            res = op1_i | op2_i;
+          `FUNCT3_AND:
+            res = op1_i & op2_i;
+        endcase
+      end else begin
+        case (funct_i)
+          `FUNCT3_EQ:
+            branch_taken = (op1_i == op2_i);
+          `FUNCT3_NE:
+            branch_taken = (op1_i != op2_i);
+          `FUNCT3_LT:
+            branch_taken = ($signed(op1_i) < $signed(op2_i));
+          `FUNCT3_GE:
+            branch_taken = ($signed(op1_i) >= $signed(op2_i));
+          `FUNCT3_LTU:
+            branch_taken = (op1_i < op2_i);
+          `FUNCT3_GEU:
+            branch_taken = (op1_i >= op2_i);
+        endcase
+      end
     end
   end
 
