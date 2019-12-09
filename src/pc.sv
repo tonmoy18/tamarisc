@@ -21,7 +21,7 @@ module pc(
 
     stall_i,
     incr_pc_i,
-    branch_taken_i,
+    load_arith_i,
     arith_out_i,
 
     pc_o,
@@ -32,7 +32,7 @@ module pc(
   input logic rst_n_i, clk_i;
   input logic stall_i;
   input logic incr_pc_i;
-  input logic branch_taken_i;
+  input logic load_arith_i;
   input logic [31:0] arith_out_i;
 
   output logic [31:0] pc_o;
@@ -73,7 +73,7 @@ module pc(
 
   always_comb begin
     if (stall_i == 1'b1) next_pc = pc_q;
-    else if (branch_taken_i == 1'b1) next_pc = arith_out_i;
+    else if (load_arith_i == 1'b1) next_pc = arith_out_i;
     else if (incr_pc_i == 1'b1) next_pc = pc_q + 'd4;
     else next_pc = pc_q;
   end

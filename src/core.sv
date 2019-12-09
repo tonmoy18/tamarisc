@@ -74,6 +74,7 @@ module core(
   logic [31:0] pc_val;
   logic [31:0] pc_val_d2;
   logic incr_pc;
+  logic pc_load_arith_out;
   logic stall;
   logic branch_taken;
 
@@ -95,7 +96,7 @@ module core(
 
     .stall_i        (stall),
     .incr_pc_i      (incr_pc),
-    .branch_taken_i (branch_taken),
+    .load_arith_i   (pc_load_arith_out),
     .arith_out_i    (arith_out),
      
     .pc_o           (pc_val),
@@ -138,6 +139,7 @@ module core(
 
     .branch_taken_i         (branch_taken),
 
+    .pc_load_arith_out_o    (pc_load_arith_out),
     .reg1_addr_o            (reg1_addr),
     .reg2_addr_o            (reg2_addr),
 

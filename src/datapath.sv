@@ -116,6 +116,10 @@ module datapath(
         m_alu_data_next = logical_out_i;
       SHIFT:
         m_alu_data_next = shift_out_i;
+      X_OP1:
+        m_alu_data_next = x_op1_q;
+      ALU_PC_VAL_D2:
+        m_alu_data_next = pc_val_d2_i;
     endcase
   end
 
