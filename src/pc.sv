@@ -26,6 +26,7 @@ module pc(
 
     pc_o,
 
+    pc_d1_o,
     pc_d2_o
 );
   // Input/Output Definitions
@@ -36,6 +37,7 @@ module pc(
   input logic [31:0] arith_out_i;
 
   output logic [31:0] pc_o;
+  output logic [31:0] pc_d1_o;
   output logic [31:0] pc_d2_o;
 
   // Local signals
@@ -46,6 +48,7 @@ module pc(
   // Output assignments
   assign pc_o = pc_q;
   assign pc_d2_o = pc_d2_q;
+  assign pc_d1_o = pc_d_q;
 
   // Module main body
 
@@ -56,19 +59,19 @@ module pc(
       pc_d2_q <= '0;
     end else begin
       pc_q <= next_pc;
-      pc_d_q <= next_pc_d;
-      pc_d2_q <= next_pc_d2;
+      pc_d_q <= (stall_i == 1'b1) ? pc_d_q : next_pc_d;
+      pc_d2_q <= (stall_i == 1'b1) ? pc_d2_q : next_pc_d2;
     end
   end
 
   always_comb begin
-    if (stall_i == 1'b1) begin
-      next_pc_d = pc_d2_q;
-      next_pc_d2 = pc_d2_q;
-    end else begin
-      next_pc_d = pc_q;
-      next_pc_d2 = pc_d_q;
-    end
+    // if (stall_i == 1'b1) begin
+    //   next_pc_d = pc_d2_q;
+    //   next_pc_d2 = pc_d2_q;
+    // end else begin
+    next_pc_d = pc_q;
+    next_pc_d2 = pc_d_q;
+    // end
   end
 
   always_comb begin

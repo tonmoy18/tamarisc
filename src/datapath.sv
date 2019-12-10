@@ -36,6 +36,7 @@ module datapath(
 
     imm_signed_i,
 
+    pc_val_d1_i,
     pc_val_d2_i,
     
     x_op1_o,
@@ -57,6 +58,7 @@ module datapath(
   input logic [31:0] logical_out_i;
   input logic [31:0] shift_out_i;
 
+  input logic [31:0] pc_val_d1_i;
   input logic [31:0] pc_val_d2_i;
 
   input logic [31:0] imm_signed_i;
@@ -127,8 +129,8 @@ module datapath(
     case (x_op1_mux_sel_i) // synopsys infer_mux
       REG1_DATA:
         x_op1_next = reg1_data_i;
-      PC_VAL_D2:
-        x_op1_next = pc_val_d2_i;
+      PC_VAL_D1:
+        x_op1_next = pc_val_d1_i;
     endcase
   end
 
@@ -145,8 +147,8 @@ module datapath(
     case (x_arith_op1_mux_sel_i) // synopsys infer_mux
       REG1_DATA:
         x_arith_op1_next = reg1_data_i;
-      PC_VAL_D2:
-        x_arith_op1_next = pc_val_d2_i;
+      PC_VAL_D1:
+        x_arith_op1_next = pc_val_d1_i;
     endcase
   end
 

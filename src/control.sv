@@ -233,21 +233,22 @@ module control(
         end
         `AUIPC_OPCODE: begin
           x_funct3_next = d_inst_i[14:12];
-          x_arith_op1_mux_sel_o = PC_VAL_D2;
+          x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { d_inst_i[31:12], 12'h000};
         end
         `BRANCH_OPCODE: begin
+          x_funct3_next = d_inst_i[14:12];
           x_is_branch_op_next = 1'b1;
           x_op1_mux_sel_o = REG1_DATA;
           x_op2_mux_sel_o = REG2_DATA;
-          x_arith_op1_mux_sel_o = PC_VAL_D2;
+          x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[7], d_inst_i[30:25], d_inst_i[11:8], 1'b0};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `JAL_OPCODE: begin
-          x_arith_op1_mux_sel_o = PC_VAL_D2;
+          x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {12{d_inst_i[31]}}, d_inst_i[31], d_inst_i[19:12], d_inst_i[20], d_inst_i[30:21]};
         end

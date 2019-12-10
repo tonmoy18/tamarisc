@@ -72,6 +72,7 @@ module core(
   logic [4:0] reg2_addr;
 
   logic [31:0] pc_val;
+  logic [31:0] pc_val_d1;
   logic [31:0] pc_val_d2;
   logic incr_pc;
   logic pc_load_arith_out;
@@ -101,6 +102,7 @@ module core(
      
     .pc_o           (pc_val),
 
+    .pc_d1_o        (pc_val_d1),
     .pc_d2_o        (pc_val_d2)
   );
 
@@ -183,6 +185,7 @@ module core(
 
     .imm_signed_i           (imm_signed),
 
+    .pc_val_d1_i            (pc_val_d1),
     .pc_val_d2_i            (pc_val_d2),
     
     .x_op1_o                (x_op1),
