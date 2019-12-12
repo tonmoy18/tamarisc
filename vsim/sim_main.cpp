@@ -3,6 +3,9 @@
 // This file ONLY is placed into the Public Domain, for any use,
 // without warranty, 2017 by Wilson Snyder.
 //======================================================================
+#include <string>
+#include <iostream>
+#include <fstream>
 
 // Include common routines
 #include <verilated.h>
@@ -26,6 +29,11 @@ double sc_time_stamp () {
 
 int main(int argc, char** argv, char** env) {
     // This is a more complicated example, please also see the simpler examples/hello_world_c.
+    std::string logout = "";
+    for (int i = 0; i < argc; i++) {
+        if ((std::string(argv[i]) ==  "--logfile") && i+1 < argc)
+            logout += std::string(argv[i+1]);
+    }
 
     // Prevent unused variable warnings
     if (0 && argc && argv && env) {}
@@ -74,21 +82,19 @@ int main(int argc, char** argv, char** env) {
         main_time++;
         top->clk ^= 1;
 
-        if (main_time == 10) {
-            if (top->debug_port == 0x0C) {
-                    printf("**INFO** TEST PASSED\n");
-            } else {
-                    printf("**ERROR** TEST FAILED, debug_port is: %x\n", top->debug_port);
-            }
-        }
-        
         if (main_time % 2 == 1) {
             if (top->ecall == 1) {
+                std::string test_status;
                 if (top->debug_port == 1) {
-                    printf("TEST PASSED");
+                    test_status = "PASS";
                 } else {
-                    printf("TEST FAILED");
+                    test_status = "FAIL";
                 }
+                printf("TEST %sED\n", test_status.c_str());
+                std::ofstream f;
+                f.open(logout.c_str(), std::ios::out);
+                f << test_status << std::endl;
+                f.close();
                 test_done = 1;
                 break;
             }
@@ -100,6 +106,20 @@ int main(int argc, char** argv, char** env) {
         tfp->dump(main_time);
 #endif
     }
+
+    // Do a couple of clock cycles for easier waveform debugging
+    main_time++;
+    top->clk ^= 1;
+    top->eval();
+#if VM_TRACE        
+        tfp->dump(main_time);
+#endif
+    main_time++;
+    top->clk ^= 1;
+    top->eval();
+#if VM_TRACE        
+        tfp->dump(main_time);
+#endif
 
 
     if (test_done == 0) {

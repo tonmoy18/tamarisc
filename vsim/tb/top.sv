@@ -28,8 +28,6 @@ module top(rst_n, clk, ecall, debug_port);
   logic [31:0] im_dout;
   logic [31:0] im_addr;
 
-  assign ecall = 1'b0;
-  
   core u_core(
     .clk_i      (clk),
     .rst_n_i    (rst_n),
@@ -42,7 +40,9 @@ module top(rst_n, clk, ecall, debug_port);
     .im_dout_i      (im_dout),
     .im_addr_o      (im_addr),
 
-    .debug_port_o   (debug_port)  
+    .debug_port_o   (debug_port),
+
+    .ecall_o        (ecall)
   );
 
   mem u_dm(
@@ -55,7 +55,7 @@ module top(rst_n, clk, ecall, debug_port);
   );
 
   mem # (
-    .memfile(`IM_HEXFILE)
+    .HEXFILE_FROM_ARG(1)
     )u_im(
     .rst_n_i      (rst_n),
     .clk_i        (clk),
@@ -64,5 +64,7 @@ module top(rst_n, clk, ecall, debug_port);
     .data_in_i    (32'h0000),
     .data_out_o   (im_dout)
   );
+
+
 
 endmodule

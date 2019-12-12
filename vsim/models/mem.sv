@@ -23,11 +23,14 @@ module mem(
   data_out_o
 );
 
-  parameter string memfile = "hex/zeros.hex";
+  parameter string MEMFILE = "hex/zeros.hex";
 
+  parameter int HEXFILE_FROM_ARG = 0;
   parameter int MEMSIZE = 4096;  // Has to be multiple of 4
 
   localparam int MEMSIZE_BY_4 = MEMSIZE / 4;
+
+  string memfile = "hex/zeros.hex";
 
   input logic rst_n_i, clk_i;
 
@@ -49,7 +52,15 @@ module mem(
   end
 
   initial begin
-    $readmemh(memfile, data);
+    if (HEXFILE_FROM_ARG) begin 
+      if ($value$plusargs("hexfile=%s", memfile)) begin
+        $display("INFO: loading %s", memfile);
+        $readmemh(memfile, data);
+      end else
+        $display("ERROR opening hexfile");
+    end else begin
+      $readmemh(MEMFILE, data);
+    end
   end
 
 endmodule
