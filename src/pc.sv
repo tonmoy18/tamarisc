@@ -75,8 +75,8 @@ module pc(
   end
 
   always_comb begin
-    if (stall_i == 1'b1) next_pc = pc_q;
-    else if (load_arith_i == 1'b1) next_pc = arith_out_i;
+    if (load_arith_i == 1'b1) next_pc = arith_out_i;
+    else if (stall_i == 1'b1) next_pc = pc_q;
     else if (incr_pc_i == 1'b1) next_pc = pc_q + 'd4;
     else next_pc = pc_q;
   end

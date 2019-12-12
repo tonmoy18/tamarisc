@@ -28,7 +28,8 @@ module core(
     im_dout_i,
     im_addr_o,
 
-    debug_port_o
+    debug_port_o,
+    ecall_o
 );
 
   import proc_pkg::*;
@@ -45,6 +46,7 @@ module core(
   output logic [31:0] im_addr_o;
 
   output logic [31:0] debug_port_o;
+  output logic ecall_o;
 
   logic [`DATA_WIDTH-1:0] reg_din;
   logic [`DATA_WIDTH-1:0] reg_d1out;
@@ -88,7 +90,6 @@ module core(
   w_mux_sel_t w_mux_sel;
 
   // Main body of module
-  assign debug_port_o = m_alu_data;
   assign reg_din = w_mux;
 
   pc u_pc (
@@ -112,6 +113,7 @@ module core(
     
     .pc_i           (pc_val),
     .stall_i        (stall),
+    .branch_taken_i (branch_taken),
     .im_dout_i      (im_dout_i),
 
     .im_addr_o      (im_addr_o),
@@ -130,7 +132,9 @@ module core(
     .d1out_o        (reg_d1out),
 
     .r2_addr_i      (reg2_addr),
-    .d2out_o        (reg_d2out)
+    .d2out_o        (reg_d2out),
+
+    .debug_port_o   (debug_port_o)
   );
 
   control u_control (
@@ -162,7 +166,9 @@ module core(
 
     .incr_pc_o              (incr_pc),
       
-    .stall_o                (stall)
+    .stall_o                (stall),
+
+    .ecall_o                (ecall_o)
   );
 
   datapath u_datapath (

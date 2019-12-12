@@ -122,6 +122,8 @@ module datapath(
         m_alu_data_next = x_op1_q;
       ALU_PC_VAL_D2:
         m_alu_data_next = pc_val_d2_i;
+      ALU_PC_VAL_PLUS_4_D2:
+        m_alu_data_next = pc_val_d2_i + 32'h00000004;
     endcase
   end
 

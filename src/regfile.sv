@@ -28,8 +28,9 @@ module regfile(
     d1out_o,
 
     r2_addr_i,
-    d2out_o
-    
+    d2out_o,
+
+    debug_port_o
 );
 
   input logic rst_n_i;
@@ -39,9 +40,11 @@ module regfile(
   input logic [`DATA_WIDTH-1:0] din_i;
 
   input logic [4:0] r1_addr_i, r2_addr_i;
-  output logic [`DATA_WIDTH-1:0] d1out_o, d2out_o;
+  output logic [`DATA_WIDTH-1:0] d1out_o, d2out_o, debug_port_o;
 
   logic [`DATA_WIDTH-1:0] reg_content [31:1];
+
+  assign debug_port_o = reg_content[3]; // gp
 
   always_comb begin
     if (r1_addr_i == '0) begin

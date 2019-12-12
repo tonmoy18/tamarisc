@@ -21,7 +21,7 @@ module fetch(
 
     pc_i,
     stall_i,
-
+    branch_taken_i,
     im_dout_i,
 
     im_addr_o,
@@ -33,6 +33,7 @@ module fetch(
 
   input logic [31:0] pc_i;
   input logic stall_i;
+  input logic branch_taken_i;
   input logic [31:0] im_dout_i;
 
   output logic [31:0] im_addr_o;
@@ -43,6 +44,8 @@ module fetch(
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
+      inst_o <= '0;
+    end else if (branch_taken_i == 1'b1) begin
       inst_o <= '0;
     end else if (stall_i == 1'b1) begin
       inst_o <= inst_o;

@@ -18,7 +18,7 @@
 `define DATA_WIDTH 32
 
 `define     LUI_OPCODE        7'b0110111
-`define     AUIPC_OPCODE      7'b0110111
+`define     AUIPC_OPCODE      7'b0010111
 `define     RTYPE_OPCODE      7'b0110011
 `define     ITYPE_ALU_OPCODE  7'b0010011
 `define     BRANCH_OPCODE     7'b1100011
@@ -26,6 +26,7 @@
 `define     JALR_OPCODE       7'b1100111
 `define     LOAD_OPCODE       7'b0000011
 `define     STORE_OPCODE      7'b0100011
+`define     ECALL_OPCODE      7'b1110011
 
 `define     FUNCT3_ADD  3'b000
 `define     FUNCT3_SUB  3'b000
