@@ -4,3 +4,4 @@ obj_dir/*
 *.dmp
 *.vpd
 coverage.dat
+riscv-tests/hexfiles/*
