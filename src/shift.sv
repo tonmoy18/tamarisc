@@ -47,10 +47,10 @@ module shift(
   always_comb begin
     case (funct3_i)
       `FUNCT3_SLL:
-        res = op1_i >> op2_i;
+        res = op1_i << op2_i[5:0];
       `FUNCT3_SRL, `FUNCT3_SRA:
-        if (funct7_i) res = $signed(op1_i) >>> op2_i;
-        else res = op1_i << op2_i;
+        if (funct7_i) res = $signed(op1_i) >>> op2_i[5:0];
+        else res = op1_i >> op2_i[5:0];
     endcase
   end
 

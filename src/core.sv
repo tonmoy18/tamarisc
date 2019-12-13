@@ -236,7 +236,7 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .funct3_i       (shift_funct),
+    .funct3_i       (x_funct3),
     .funct7_i       (x_funct7_30),
 
     .op1_i          (x_op1),
