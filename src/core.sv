@@ -82,6 +82,7 @@ module core(
   logic branch_taken;
 
   logic x_logical_en;
+  logic x_jump;
   alu_mux_sel_t alu_mux_sel;
   x_op1_mux_sel_t x_op1_mux_sel;
   x_op2_mux_sel_t x_op2_mux_sel;
@@ -115,6 +116,7 @@ module core(
     .stall_i        (stall),
     .branch_taken_i (branch_taken),
     .im_dout_i      (im_dout_i),
+    .x_jump_i       (x_jump),
 
     .im_addr_o      (im_addr_o),
 
@@ -161,6 +163,8 @@ module core(
     .reg_w_addr_o           (reg_w_addr),
 
     .x_logical_en_o         (x_logical_en),
+
+    .x_jump_o               (x_jump),
 
     .imm_signed_o           (imm_signed),
 

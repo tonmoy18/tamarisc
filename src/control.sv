@@ -40,6 +40,8 @@ module control(
   x_is_branch_op_o,
   x_logical_en_o,
 
+  x_jump_o,
+
   reg_w_addr_o,
 
 
@@ -75,6 +77,7 @@ module control(
   output logic x_funct7_30_o;
   output logic x_is_branch_op_o;
   output logic x_logical_en_o;
+  output logic x_jump_o;
 
   output logic [4:0] reg_w_addr_o;
   output logic [31:0] imm_signed_o;
@@ -98,8 +101,10 @@ module control(
   logic [4:0] d_rd, x_rd, m_rd, w_rd;
   logic [4:0] next_x_rd, next_m_rd, next_w_rd;
   logic conflict;
-  logic d_jump, x_jump, m_jump;
+  logic d_jump, x_jump, m_jump, next_x_jump, w_jump;
   logic d_ecall, x_ecall, m_ecall, w_ecall;
+  logic jumping;
+  logic jump_or_branch_conflict;
 
   // Assign outputs
   assign reg1_addr_o = (conflict == 1'b1) ? '0 : reg1_addr;
@@ -108,10 +113,12 @@ module control(
   assign x_funct7_30_o = x_funct7_30_q ;
   assign x_is_branch_op_o = x_is_branch_op_q;
   assign x_logical_en_o = x_logical_en_q;
-  assign incr_pc_o = ~stall;
-  assign stall_o = stall;
-  assign pc_load_arith_out_o = branch_taken_i | m_jump;
+  assign x_jump_o = x_jump;
+  assign incr_pc_o = ~conflict;
+  assign stall_o = conflict;
+  assign pc_load_arith_out_o = branch_taken_i | x_jump;
   assign ecall_o = w_ecall;
+  assign jumping = m_jump;
 
   assign d_opcode = d_inst_i[6:0];
   assign d_rd = d_inst_i[11:7];
@@ -140,15 +147,17 @@ module control(
       m_jump <= '0;
       w_opcode <= '0;
       w_rd <= '0;
+      w_jump <= '0;
     end else begin
       x_opcode <= next_x_opcode;
       x_rd <= next_x_rd;
-      x_jump <= d_jump;
+      x_jump <= next_x_jump;
       m_opcode <= next_m_opcode;
       m_rd <= next_m_rd;
       m_jump <= x_jump;
       w_opcode <= next_w_opcode;
       w_rd <= next_w_rd;
+      w_jump <= m_jump;
     end
   end
 
@@ -172,16 +181,35 @@ module control(
     next_m_opcode = x_opcode;
     next_w_opcode = m_opcode;
     
-    if (stall == 1'b0 && branch_taken_i == 1'b0) begin
+    if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0) begin
       next_x_rd = d_rd;
       next_x_opcode = d_opcode;
+      next_x_jump = d_jump;
     end else begin
       next_x_rd = '0;
       next_x_opcode = '0;
+      next_x_jump = '0;
     end
   end
   
-  assign stall = conflict; // TODO: need other logic for stall
+  always_comb begin
+    jump_or_branch_conflict = 1'b0;
+    if (d_opcode == `BRANCH_OPCODE ||
+        d_opcode == `JAL_OPCODE ||
+        d_opcode == `JALR_OPCODE) begin
+        if (x_opcode == `BRANCH_OPCODE && branch_taken_i) begin
+          jump_or_branch_conflict = 1'b1;
+        end
+        case(`JAL_OPCODE)
+          x_opcode, m_opcode, w_opcode:
+            jump_or_branch_conflict = 1'b1;
+        endcase
+        case(`JALR_OPCODE)
+          x_opcode, m_opcode, w_opcode:
+            jump_or_branch_conflict = 1'b1;
+        endcase
+      end
+  end
   
   always_comb begin
     if (reg1_addr != '0 &&
@@ -190,10 +218,7 @@ module control(
     else if (reg2_addr != '0 &&
              (reg2_addr == x_rd || reg2_addr == m_rd || reg2_addr == w_rd))
       conflict = 1'b1;
-    else if (d_opcode == `BRANCH_OPCODE && 
-             ((x_opcode == `BRANCH_OPCODE) || 
-              (m_opcode == `BRANCH_OPCODE) || 
-              (w_opcode == `BRANCH_OPCODE) ))
+    else if (jump_or_branch_conflict == 1'b1)
       conflict = 1'b1;
     else
       conflict = 1'b0;
@@ -203,11 +228,11 @@ module control(
     reg1_addr = '0;
     reg2_addr = '0;
     case (d_opcode)
-      `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `BRANCH_OPCODE: begin
+      `RTYPE_OPCODE, `BRANCH_OPCODE: begin
         reg1_addr = d_inst_i[19:15];
         reg2_addr = d_inst_i[24:20];
       end
-      `AUIPC_OPCODE: begin
+      `ITYPE_ALU_OPCODE, `JALR_OPCODE:  begin
         reg1_addr = d_inst_i[19:15];
       end
     endcase
@@ -272,7 +297,8 @@ module control(
         `JAL_OPCODE: begin
           x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
-          imm_signed_o = { {12{d_inst_i[31]}}, d_inst_i[31], d_inst_i[19:12], d_inst_i[20], d_inst_i[30:21]};
+          imm_signed_o = { {12{d_inst_i[31]}}, d_inst_i[19:12], d_inst_i[20], d_inst_i[30:21], 1'b0 };
+          d_jump = 1'b1;
         end
         `JALR_OPCODE: begin
           x_arith_zero_lsb_o = 1'b1;
@@ -282,6 +308,7 @@ module control(
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
+          d_jump = 1'b1;
         end
       endcase
     end
@@ -307,11 +334,8 @@ module control(
       `BRANCH_OPCODE: begin
         alu_mux_sel_o = ARITH; // Doesn't matter, won't be used
       end
-      `JAL_OPCODE: begin
+      `JAL_OPCODE, `JALR_OPCODE: begin
         alu_mux_sel_o = ALU_PC_VAL_PLUS_4_D2;
-      end
-      `JALR_OPCODE: begin
-        alu_mux_sel_o = ALU_PC_VAL_D2;
       end
     endcase
   end
