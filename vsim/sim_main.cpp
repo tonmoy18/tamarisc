@@ -78,7 +78,7 @@ int main(int argc, char** argv, char** env) {
     int test_done = 0;
     
     // Simulate until $finish
-    while (!Verilated::gotFinish() && main_time < 2000) {
+    while (!Verilated::gotFinish() && main_time < 6000) {
         main_time++;
         top->clk ^= 1;
 
