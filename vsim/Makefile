@@ -52,6 +52,7 @@ VERILATOR_FLAGS += --coverage
 # Add this trace to get a backtrace in gdb
 #VERILATOR_FLAGS += --gdbbt
 HEX = hex/zeros.hex
+HEX2 = hex/zeros.hex
 
 ######################################################################
 default: run
@@ -75,7 +76,7 @@ run:
 	@echo "-- RUN ---------------------"
 	@mkdir -p logs
 	@echo ${HEX}
-	obj_dir/Vtop +trace +hexfile=${HEX} --logfile "logs/$(basename $(notdir ${HEX})).log"
+	obj_dir/Vtop +trace +text_hexfile=${HEX} +data_hexfile=${HEX2} --logfile "logs/$(basename $(notdir ${HEX})).log"
 
 	@echo
 	@echo "-- COVERAGE ----------------"

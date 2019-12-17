@@ -42,8 +42,11 @@ module control(
 
   x_jump_o,
 
-  reg_w_addr_o,
+  x_dm_wen_o,
 
+  w_funct3_o,
+
+  reg_w_addr_o,
 
   imm_signed_o,
 
@@ -79,6 +82,10 @@ module control(
   output logic x_logical_en_o;
   output logic x_jump_o;
 
+  output logic x_dm_wen_o;
+
+  output logic [2:0] w_funct3_o;
+
   output logic [4:0] reg_w_addr_o;
   output logic [31:0] imm_signed_o;
   output logic incr_pc_o;
@@ -88,6 +95,7 @@ module control(
 
   // Local signals
   logic [2:0] x_funct3_q, x_funct3_next;
+  logic [2:0] m_funct3_q;
   logic x_funct7_30_q, x_funct7_30_next;
   logic x_is_branch_op_next, x_is_branch_op_q;
   logic x_logical_en_next, x_logical_en_q;
@@ -118,6 +126,8 @@ module control(
   assign stall_o = conflict;
   assign pc_load_arith_out_o = branch_taken_i | x_jump;
   assign ecall_o = w_ecall;
+  assign w_funct3_o = m_funct3_q;
+
   assign jumping = m_jump;
 
   assign d_opcode = d_inst_i[6:0];
@@ -145,6 +155,7 @@ module control(
       m_opcode <= '0;
       m_rd <= '0;
       m_jump <= '0;
+      m_funct3_q <= '0;
       w_opcode <= '0;
       w_rd <= '0;
       w_jump <= '0;
@@ -155,6 +166,7 @@ module control(
       m_opcode <= next_m_opcode;
       m_rd <= next_m_rd;
       m_jump <= x_jump;
+      m_funct3_q <= (x_opcode == `LOAD_OPCODE) ? x_funct3_q : '0;
       w_opcode <= next_w_opcode;
       w_rd <= next_w_rd;
       w_jump <= m_jump;
@@ -228,11 +240,11 @@ module control(
     reg1_addr = '0;
     reg2_addr = '0;
     case (d_opcode)
-      `RTYPE_OPCODE, `BRANCH_OPCODE: begin
+      `RTYPE_OPCODE, `BRANCH_OPCODE, `STORE_OPCODE: begin
         reg1_addr = d_inst_i[19:15];
         reg2_addr = d_inst_i[24:20];
       end
-      `ITYPE_ALU_OPCODE, `JALR_OPCODE:  begin
+      `LOAD_OPCODE, `ITYPE_ALU_OPCODE, `JALR_OPCODE, `LOAD_OPCODE:  begin
         reg1_addr = d_inst_i[19:15];
       end
     endcase
@@ -250,6 +262,7 @@ module control(
     imm_signed_o = '0;
     d_jump = '0;
     x_arith_zero_lsb_o = '0;
+    x_dm_wen_o = '0;
     if (conflict == 1'b0) begin
       case (d_opcode)
         `RTYPE_OPCODE: begin
@@ -261,11 +274,13 @@ module control(
           x_arith_op2_mux_sel_o = REG2_DATA;
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
-        `ITYPE_ALU_OPCODE: begin
+        `ITYPE_ALU_OPCODE, `LOAD_OPCODE: begin
           x_funct3_next = d_inst_i[14:12];
-          if (d_inst_i[14:12] == `FUNCT3_SRA ||
-              d_inst_i[14:12] == `FUNCT3_SRL) begin
-              x_funct7_30_next = d_inst_i[30];
+          if (d_opcode == `ITYPE_ALU_OPCODE) begin
+            if (d_inst_i[14:12] == `FUNCT3_SRA ||
+                d_inst_i[14:12] == `FUNCT3_SRL) begin
+                x_funct7_30_next = d_inst_i[30];
+            end
           end
           x_op1_mux_sel_o = REG1_DATA;
           x_op2_mux_sel_o = IMM_SIGNED;
@@ -273,6 +288,13 @@ module control(
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
+        end
+        `STORE_OPCODE: begin
+          x_funct3_next = d_inst_i[14:12];
+          x_arith_op1_mux_sel_o = REG1_DATA;
+          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          imm_signed_o = { {20{d_opcode[31]}}, d_inst_i[31:25], d_inst_i[11:7]};
+          x_dm_wen_o = 1'b1;
         end
         `LUI_OPCODE: begin
           x_arith_op1_mux_sel_o = REG1_DATA;
@@ -328,8 +350,11 @@ module control(
             alu_mux_sel_o = LOGIC;
         endcase
       end
-      `LUI_OPCODE, `AUIPC_OPCODE: begin
+      `LOAD_OPCODE, `STORE_OPCODE: begin
         alu_mux_sel_o = ARITH;
+      end
+      `LUI_OPCODE, `AUIPC_OPCODE: begin
+        alu_mux_sel_o = ARITH; // Just for datapath to check addr % 2 == 1
       end
       `BRANCH_OPCODE: begin
         alu_mux_sel_o = ARITH; // Doesn't matter, won't be used
@@ -347,13 +372,16 @@ module control(
       `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE, `JAL_OPCODE, `JALR_OPCODE: begin
         w_mux_sel_o = ALU;
       end
+      `LOAD_OPCODE: begin
+        w_mux_sel_o = DM;
+      end
     endcase
   end
 
   always_comb begin
     reg_w_addr_o = '0;
     case (w_opcode)
-    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE, `JAL_OPCODE, `JALR_OPCODE: begin
+    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE, `JAL_OPCODE, `JALR_OPCODE, `LOAD_OPCODE: begin
       reg_w_addr_o = w_rd;
     end
     endcase

@@ -90,6 +90,12 @@ module core(
   x_op2_mux_sel_t x_arith_op2_mux_sel;
   w_mux_sel_t w_mux_sel;
 
+  logic x_dm_wen;
+  logic [31:0] x_dm_addr;
+  logic [31:0] x_dm_din;
+  logic [31:0] m_dm_dout;
+  logic [3:0] w_funct3;
+
   // Main body of module
   assign reg_din = w_mux;
 
@@ -157,6 +163,8 @@ module core(
     .x_arith_op1_mux_sel_o  (x_arith_op1_mux_sel),
     .x_arith_op2_mux_sel_o  (x_arith_op2_mux_sel),
 
+    .w_mux_sel_o             (w_mux_sel),
+
     .x_funct3_o             (x_funct3),
     .x_funct7_30_o          (x_funct7_30),
     .x_is_branch_op_o       (x_is_branch_op),
@@ -165,6 +173,10 @@ module core(
     .x_logical_en_o         (x_logical_en),
 
     .x_jump_o               (x_jump),
+
+    .x_dm_wen_o             (x_dm_wen),
+
+    .w_funct3_o             (w_funct3),
 
     .imm_signed_o           (imm_signed),
 
@@ -184,7 +196,11 @@ module core(
     .x_op2_mux_sel_i        (x_op2_mux_sel),
     .x_arith_op1_mux_sel_i  (x_arith_op1_mux_sel),
     .x_arith_op2_mux_sel_i  (x_arith_op2_mux_sel),
+
+    .m_dm_dout_i            (m_dm_dout),
+
     .w_mux_sel_i            (w_mux_sel),
+    .w_load_funct3_i        (w_funct3),
 
     .reg1_data_i            (reg_d1out),
     .reg2_data_i            (reg_d2out),
@@ -247,6 +263,23 @@ module core(
     .op2_i          (x_op2),
 
     .res_o          (shift_out)
+  );
+
+  dcache u_dcache (
+    .rst_n_i        (rst_n_i),
+    .clk_i          (clk_i),
+
+    .x_dm_wen_i     (x_dm_wen),
+    .x_dm_addr_i    (arith_out),
+    .x_dm_din_i     (reg_d2out),
+
+    .m_dm_dout_o    (m_dm_dout),
+
+    .dm_dout_i      (dm_dout_i),
+
+    .dm_wen_o       (dm_wen_o),
+    .dm_addr_o      (dm_addr_o),
+    .dm_din_o       (dm_din_o)
   );
 
 endmodule

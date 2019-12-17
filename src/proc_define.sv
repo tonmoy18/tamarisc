@@ -16,6 +16,8 @@
 
 
 `define DATA_WIDTH 32
+// `define PC_RESET_VAL        32'h80000100
+`define PC_RESET_VAL       32'h80000100
 
 `define     LUI_OPCODE        7'b0110111
 `define     AUIPC_OPCODE      7'b0010111
@@ -45,3 +47,10 @@
 `define     FUNCT3_GE   3'b101
 `define     FUNCT3_LTU  3'b110
 `define     FUNCT3_GEU  3'b111
+
+
+`define LOAD_B    3'b000
+`define LOAD_H    3'b001
+`define LOAD_W    3'b010
+`define LOAD_BU   3'b100
+`define LOAD_HU   3'b101

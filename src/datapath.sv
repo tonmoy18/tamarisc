@@ -38,6 +38,9 @@ module datapath(
 
     pc_val_d1_i,
     pc_val_d2_i,
+
+    w_load_funct3_i,
+    m_dm_dout_i,
     
     x_op1_o,
     x_op2_o,
@@ -60,6 +63,9 @@ module datapath(
 
   input logic [31:0] pc_val_d1_i;
   input logic [31:0] pc_val_d2_i;
+
+  input logic [2:0] w_load_funct3_i;
+  input logic [31:0] m_dm_dout_i;
 
   input logic [31:0] imm_signed_i;
 
@@ -84,6 +90,8 @@ module datapath(
   logic [31:0] x_arith_op2_next, x_arith_op2_q;
   logic [31:0] m_alu_data_q, m_alu_data_next;
   logic [31:0] w_mux_q, w_mux_next;
+  logic load_signed;
+  logic load_sign_bit;
 
   assign m_alu_data_o = m_alu_data_q;
   assign x_op1_o = x_op1_q;
@@ -167,6 +175,51 @@ module datapath(
     case (w_mux_sel_i) // synopsys infer_mux
       ALU:
         w_mux_next = m_alu_data_q;
+      DM: begin
+        load_signed = 1'b0;
+        case(w_load_funct3_i)
+        `LOAD_B, `LOAD_H, `LOAD_W:
+          load_signed = 1'b1;
+        `LOAD_BU, `LOAD_HU:
+          load_signed = 1'b0;
+        endcase
+
+        case (w_load_funct3_i)
+        `LOAD_B, `LOAD_BU: begin
+          load_sign_bit = 1'b0;
+          case (m_alu_data_q[1:0]) 
+          2'b00: begin
+            if (load_signed) load_sign_bit = m_dm_dout_i[7];
+            w_mux_next = {{ 24{load_sign_bit}}, m_dm_dout_i[7:0]};
+          end
+          2'b01: begin
+            if (load_signed) load_sign_bit = m_dm_dout_i[15];
+            w_mux_next = {{ 24{load_sign_bit}}, m_dm_dout_i[15:8]};
+          end
+          2'b10: begin
+            if (load_signed) load_sign_bit = m_dm_dout_i[23];
+            w_mux_next = {{ 24{load_sign_bit}}, m_dm_dout_i[23:16]};
+          end
+          2'b11: begin
+            if (load_signed) load_sign_bit = m_dm_dout_i[31];
+            w_mux_next = {{ 24{load_sign_bit}}, m_dm_dout_i[31:24]};
+          end
+          endcase
+        end
+        `LOAD_H, `LOAD_HU: begin
+          load_sign_bit = 1'b0;
+          if (m_alu_data_q[1] == 1'b1) begin
+            if (load_signed) load_sign_bit  = m_dm_dout_i[31];
+            w_mux_next = {{ 16{load_sign_bit}}, m_dm_dout_i[31:16]};
+          end else begin
+            if (load_signed) load_sign_bit  = m_dm_dout_i[15];
+            w_mux_next = {{ 16{load_sign_bit}}, m_dm_dout_i[15:0]};
+          end
+        end
+        `LOAD_W:
+          w_mux_next = m_dm_dout_i;
+        endcase
+      end
     endcase
   end
 

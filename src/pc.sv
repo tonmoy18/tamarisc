@@ -54,9 +54,9 @@ module pc(
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
-      pc_q <= '0;
-      pc_d_q <= '0;
-      pc_d2_q <= '0;
+      pc_q <= `PC_RESET_VAL;
+      pc_d_q <= `PC_RESET_VAL;
+      pc_d2_q <= `PC_RESET_VAL;
     end else begin
       pc_q <= next_pc;
       pc_d_q <= (stall_i == 1'b1) ? pc_d_q : next_pc_d;
