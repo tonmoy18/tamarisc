@@ -33,6 +33,7 @@ module datapath(
     arith_out_i,
     logical_out_i,
     shift_out_i,
+    csr_val_i,
 
     imm_signed_i,
 
@@ -60,6 +61,7 @@ module datapath(
   input logic [31:0] arith_out_i;
   input logic [31:0] logical_out_i;
   input logic [31:0] shift_out_i;
+  input logic [31:0] csr_val_i;
 
   input logic [31:0] pc_val_d1_i;
   input logic [31:0] pc_val_d2_i;

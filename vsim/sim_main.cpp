@@ -83,9 +83,9 @@ int main(int argc, char** argv, char** env) {
         top->clk ^= 1;
 
         if (main_time % 2 == 1) {
-            if (top->ecall == 1) {
+            if (top->tohost_int_o == 1) {
                 std::string test_status;
-                if (top->debug_port == 1) {
+                if (top->tohost_data_o == 1) {
                     test_status = "PASS";
                 } else {
                     test_status = "FAIL";

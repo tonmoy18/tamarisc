@@ -23,9 +23,16 @@ module control(
   d_inst_i,
   branch_taken_i,
 
+  csr_exception_i,
+
   pc_load_arith_out_o,
   reg1_addr_o,
   reg2_addr_o,
+
+  csr_r_en_o,
+  csr_op_mode_o,
+  csr_w_en_o,
+  csr_addr_o,
 
   alu_mux_sel_o,
   x_op1_mux_sel_o,
@@ -55,7 +62,9 @@ module control(
   stall_o,
   x_arith_zero_lsb_o,
 
-  ecall_o
+  ret_o,
+  exception_o
+
 );
 
   import proc_pkg::*;
@@ -65,9 +74,16 @@ module control(
   input logic [31:0] d_inst_i;
   input logic branch_taken_i;
 
+  input logic csr_exception_i;
+
   output logic pc_load_arith_out_o;
   output logic [4:0] reg1_addr_o;
   output logic [4:0] reg2_addr_o;
+
+  output logic csr_r_en_o;
+  output logic [12:0] csr_addr_o;
+  output csr_op_mode_t csr_op_mode_o;
+  output logic csr_w_en_o;
 
   output alu_mux_sel_t alu_mux_sel_o;
   output x_op1_mux_sel_t x_op1_mux_sel_o;
@@ -91,15 +107,19 @@ module control(
   output logic incr_pc_o;
   output logic stall_o;
   output logic x_arith_zero_lsb_o;
-  output logic ecall_o;
+  output logic ret_o;
+  output logic exception_o;
 
   // Local signals
+  logic csr_r_en_next;
+  logic [12:0] csr_addr_next;
+  csr_op_mode_t csr_op_mode_next;
   logic [2:0] x_funct3_q, x_funct3_next;
   logic [2:0] m_funct3_q;
   logic x_funct7_30_q, x_funct7_30_next;
   logic x_is_branch_op_next, x_is_branch_op_q;
   logic x_logical_en_next, x_logical_en_q;
-  logic [31:0] reg1_addr, reg2_addr;
+  logic [4:0] reg1_addr, reg2_addr;
   logic [6:0] d_opcode;
 
   logic [6:0] x_opcode, next_x_opcode;
@@ -110,7 +130,9 @@ module control(
   logic [4:0] next_x_rd, next_m_rd, next_w_rd;
   logic conflict;
   logic d_jump, x_jump, m_jump, next_x_jump, w_jump;
-  logic d_ecall, x_ecall, m_ecall, w_ecall;
+  logic x_exception, m_exception, w_exception;
+  logic x_ret, m_ret, w_ret;
+  logic [3:0] d_excep_code, x_excep_code, m_excep_code;
   logic jumping;
   logic jump_or_branch_conflict;
 
@@ -125,25 +147,39 @@ module control(
   assign incr_pc_o = ~conflict;
   assign stall_o = conflict;
   assign pc_load_arith_out_o = branch_taken_i | x_jump;
-  assign ecall_o = w_ecall;
+  assign ecall_o = 1'b0;
   assign w_funct3_o = m_funct3_q;
 
   assign jumping = m_jump;
 
   assign d_opcode = d_inst_i[6:0];
-  assign d_rd = d_inst_i[11:7];
-  
-  assign d_ecall = (d_inst_i[6:0] == `ECALL_OPCODE);
+
+  assign exception_o = m_exception | csr_exception_i;
+  assign ret_o = m_ret;
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
-      x_ecall <= '0;
-      m_ecall <= '0;
-      w_ecall <= '0;
+      csr_addr_o <= '0;
+      csr_op_mode_o <= NONE;
+      csr_r_en_o <= '0;
     end else begin
-      x_ecall <= d_ecall;
-      m_ecall <= x_ecall;
-      w_ecall <= m_ecall;
+      csr_addr_o <= csr_addr_next;
+      csr_op_mode_o <= csr_op_mode_next;
+      csr_r_en_o <= csr_r_en_next;
+    end
+  end
+  
+  always_ff @(posedge clk_i, negedge rst_n_i) begin
+    if (rst_n_i == 1'b0) begin
+      m_exception <= '0;
+      w_exception <= '0;
+      m_ret <= '0;
+      w_ret <= '0;
+    end else begin
+      m_exception <= x_exception;
+      w_exception <= m_exception;
+      m_ret <= x_ret;
+      w_ret <= m_ret; 
     end
   end
 
@@ -193,7 +229,9 @@ module control(
     next_m_opcode = x_opcode;
     next_w_opcode = m_opcode;
     
-    if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0) begin
+    // Probably should keep in decode structure
+    // if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0) begin
+    if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0 && x_exception == 1'b0 && x_ret == 1'b0) begin
       next_x_rd = d_rd;
       next_x_opcode = d_opcode;
       next_x_jump = d_jump;
@@ -208,19 +246,28 @@ module control(
     jump_or_branch_conflict = 1'b0;
     if (d_opcode == `BRANCH_OPCODE ||
         d_opcode == `JAL_OPCODE ||
-        d_opcode == `JALR_OPCODE) begin
-        if (x_opcode == `BRANCH_OPCODE && branch_taken_i) begin
-          jump_or_branch_conflict = 1'b1;
-        end
-        case(`JAL_OPCODE)
-          x_opcode, m_opcode, w_opcode:
-            jump_or_branch_conflict = 1'b1;
-        endcase
-        case(`JALR_OPCODE)
-          x_opcode, m_opcode, w_opcode:
-            jump_or_branch_conflict = 1'b1;
-        endcase
+        d_opcode == `JALR_OPCODE ||
+        d_opcode == `SYSTEM_OPCODE ||
+        m_exception == 1'b1 ||
+        m_ret == 1'b1) begin
+      if (x_opcode == `BRANCH_OPCODE && branch_taken_i) begin
+        jump_or_branch_conflict = 1'b1;
       end
+      case(`JAL_OPCODE)
+        x_opcode, m_opcode, w_opcode:
+          jump_or_branch_conflict = 1'b1;
+      endcase
+      case(`JALR_OPCODE)
+        x_opcode, m_opcode, w_opcode:
+          jump_or_branch_conflict = 1'b1;
+      endcase
+    end
+    if (m_exception == 1'b1 || m_ret == 1'b1) begin
+      case(`SYSTEM_OPCODE)
+        x_opcode, m_opcode, w_opcode:
+          jump_or_branch_conflict = 1'b1;
+      endcase
+    end
   end
   
   always_comb begin
@@ -247,10 +294,16 @@ module control(
       `LOAD_OPCODE, `ITYPE_ALU_OPCODE, `JALR_OPCODE, `LOAD_OPCODE:  begin
         reg1_addr = d_inst_i[19:15];
       end
+      `SYSTEM_OPCODE: begin
+        if (d_inst_i[14] == 1'b0) begin // non-immidiate
+          reg1_addr = d_inst_i[19:15];
+        end
+      end
     endcase
   end
 
   always_comb begin
+    d_rd = '0; 
     x_funct3_next = '0;
     x_funct7_30_next = 1'b0;
     x_is_branch_op_next = 1'b0;
@@ -263,9 +316,44 @@ module control(
     d_jump = '0;
     x_arith_zero_lsb_o = '0;
     x_dm_wen_o = '0;
+    csr_r_en_next = 1'b0;
+    csr_addr_next = '0;
+    csr_op_mode_next = NONE;
+    x_exception = 1'b0;
+    x_excep_code = '0;
+    x_ret = 1'b0;
     if (conflict == 1'b0) begin
       case (d_opcode)
+        `SYSTEM_OPCODE: begin
+          if (d_inst_i[14:12] !== 3'b000) begin
+            csr_r_en_next = 1'b1;
+            csr_addr_next = d_inst_i[31:20];
+            if (d_inst_i[14:12] == 3'b001) csr_op_mode_next = READ_WRITE;
+            else if (d_inst_i[14:12] == 3'b010) csr_op_mode_next = SET;
+            else if (d_inst_i[14:12] == 3'b011) csr_op_mode_next = CLR;
+            else csr_op_mode_next = NONE;
+            d_rd = d_inst_i[11:7];
+            if (d_inst_i[14] == 1'b0) begin // non-immediate
+              x_op1_mux_sel_o = REG1_DATA;
+            end else begin // immediate
+              x_op1_mux_sel_o = IMM_SIGNED;
+              imm_signed_o = {27'b0, d_inst_i[19:15]};
+            end
+          end else begin
+            if (d_inst_i[31:20] == 12'h302) begin
+              x_ret = 1'b1;
+            end else begin
+              x_exception = 1'b1;
+              if (d_inst_i[31:20] == 12'h000) begin
+                x_excep_code = 4'hB;    // ECALL from M-mode
+              end else if (d_inst_i[31:20] == 12'h001) begin
+                x_excep_code = 4'h3;    // Breakpoint
+              end
+            end
+          end
+        end
         `RTYPE_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_funct3_next = d_inst_i[14:12];
           x_funct7_30_next = d_inst_i[30];
           x_op1_mux_sel_o = REG1_DATA;
@@ -275,6 +363,7 @@ module control(
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `ITYPE_ALU_OPCODE, `LOAD_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_funct3_next = d_inst_i[14:12];
           if (d_opcode == `ITYPE_ALU_OPCODE) begin
             if (d_inst_i[14:12] == `FUNCT3_SRA ||
@@ -293,15 +382,17 @@ module control(
           x_funct3_next = d_inst_i[14:12];
           x_arith_op1_mux_sel_o = REG1_DATA;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
-          imm_signed_o = { {20{d_opcode[31]}}, d_inst_i[31:25], d_inst_i[11:7]};
+          imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:25], d_inst_i[11:7]};
           x_dm_wen_o = 1'b1;
         end
         `LUI_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_arith_op1_mux_sel_o = REG1_DATA;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { d_inst_i[31:12], 12'h000};
         end
         `AUIPC_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { d_inst_i[31:12], 12'h000};
@@ -317,12 +408,14 @@ module control(
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `JAL_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_arith_op1_mux_sel_o = PC_VAL_D1;
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {12{d_inst_i[31]}}, d_inst_i[19:12], d_inst_i[20], d_inst_i[30:21], 1'b0 };
           d_jump = 1'b1;
         end
         `JALR_OPCODE: begin
+          d_rd = d_inst_i[11:7];
           x_arith_zero_lsb_o = 1'b1;
           x_op1_mux_sel_o = REG1_DATA;
           x_op2_mux_sel_o = IMM_SIGNED;
@@ -375,13 +468,16 @@ module control(
       `LOAD_OPCODE: begin
         w_mux_sel_o = DM;
       end
+      `SYSTEM_OPCODE: begin
+        w_mux_sel_o = CSR;
+      end
     endcase
   end
 
   always_comb begin
     reg_w_addr_o = '0;
     case (w_opcode)
-    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE, `JAL_OPCODE, `JALR_OPCODE, `LOAD_OPCODE: begin
+    `RTYPE_OPCODE, `ITYPE_ALU_OPCODE, `LUI_OPCODE, `AUIPC_OPCODE, `JAL_OPCODE, `JALR_OPCODE, `LOAD_OPCODE, `SYSTEM_OPCODE: begin
       reg_w_addr_o = w_rd;
     end
     endcase

@@ -21,8 +21,12 @@ module pc(
 
     stall_i,
     incr_pc_i,
+    exception_i,
+    ret_i,
     load_arith_i,
     arith_out_i,
+    mtvec_i,
+    mepc_i,
 
     pc_o,
 
@@ -33,8 +37,12 @@ module pc(
   input logic rst_n_i, clk_i;
   input logic stall_i;
   input logic incr_pc_i;
+  input logic exception_i;
+  input logic ret_i;
   input logic load_arith_i;
   input logic [31:0] arith_out_i;
+  input logic [31:0] mtvec_i;
+  input logic [31:0] mepc_i;
 
   output logic [31:0] pc_o;
   output logic [31:0] pc_d1_o;
@@ -75,7 +83,9 @@ module pc(
   end
 
   always_comb begin
-    if (load_arith_i == 1'b1) next_pc = arith_out_i;
+    if (exception_i == 1'b1) next_pc = {mtvec_i[31:2], 2'b00};
+    else if (ret_i == 1'b1) next_pc = mepc_i;
+    else if (load_arith_i == 1'b1) next_pc = arith_out_i;
     else if (stall_i == 1'b1) next_pc = pc_q;
     else if (incr_pc_i == 1'b1) next_pc = pc_q + 'd4;
     else next_pc = pc_q;

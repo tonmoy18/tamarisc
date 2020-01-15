@@ -14,11 +14,21 @@
 //
 ///////////////////////////////////////////////////////////
 
-module top(rst_n, clk, ecall, debug_port);
+module top(
+  rst_n,
+  clk,
+  tohost_int_o,
+  tohost_data_o,
+  ecall,
+  debug_port
+);
 
   input logic rst_n, clk;
+
+  output logic [31:0] tohost_data_o;
+  output logic tohost_int_o;
+  output logic [31:0] debug_port;
   output logic ecall;
-  output logic [31:0] debug_port; // Temporary, need better intf
 
   logic [31:0] dm_dout;
   logic dm_wen;
@@ -27,6 +37,7 @@ module top(rst_n, clk, ecall, debug_port);
 
   logic [31:0] im_dout;
   logic [31:0] im_addr;
+
 
   core u_core(
     .clk_i      (clk),
@@ -61,6 +72,9 @@ module top(rst_n, clk, ecall, debug_port);
     .data2_in_i   (32'h0000),
     .data2_out_o  (im_dout)
   );
+
+  assign tohost_int_o = (dm_wen && dm_addr == 32'h80001000);
+  assign tohost_data_o = tohost_int_o == 1'b1 ? '0 : dm_din;
 
   // mem u_dm(
   //   .rst_n_i      (rst_n),

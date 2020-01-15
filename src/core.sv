@@ -38,7 +38,7 @@ module core(
   input logic clk_i;
 
   input logic [31:0] dm_dout_i;
-  output logic [31:0] dm_wen_o;
+  output logic dm_wen_o;
   output logic [31:0] dm_din_o;
   output logic [31:0] dm_addr_o;
 
@@ -89,12 +89,21 @@ module core(
   x_op1_mux_sel_t x_arith_op1_mux_sel;
   x_op2_mux_sel_t x_arith_op2_mux_sel;
   w_mux_sel_t w_mux_sel;
+  csr_op_mode_t csr_op_mode;
+  logic [12:0] csr_addr;
+
+  logic [31:0] mtvec;
+  logic [31:0] mepc;
+
+  logic [31:0] csr_val;
 
   logic x_dm_wen;
   logic [31:0] x_dm_addr;
   logic [31:0] x_dm_din;
   logic [31:0] m_dm_dout;
   logic [3:0] w_funct3;
+
+  logic exception, ret;
 
   // Main body of module
   assign reg_din = w_mux;
@@ -105,8 +114,12 @@ module core(
 
     .stall_i        (stall),
     .incr_pc_i      (incr_pc),
+    .exception_i    (exception),
+    .ret_i          (ret),
     .load_arith_i   (pc_load_arith_out),
     .arith_out_i    (arith_out),
+    .mtvec_i        (mtvec),
+    .mepc_i         (mepc),
      
     .pc_o           (pc_val),
 
@@ -153,6 +166,11 @@ module core(
 
     .branch_taken_i         (branch_taken),
 
+    .csr_exception_i        (csr_exception),
+
+    .csr_op_mode_o          (csr_op_mode),
+    .csr_addr_o             (csr_addr),
+
     .pc_load_arith_out_o    (pc_load_arith_out),
     .reg1_addr_o            (reg1_addr),
     .reg2_addr_o            (reg2_addr),
@@ -184,7 +202,8 @@ module core(
       
     .stall_o                (stall),
 
-    .ecall_o                (ecall_o)
+    .ret_o                  (ret),
+    .exception_o            (exception)
   );
 
   datapath u_datapath (
@@ -208,11 +227,13 @@ module core(
     .arith_out_i            (arith_out),
     .logical_out_i          (logical_out),
     .shift_out_i            (shift_out),
+    .csr_val_i              (csr_val),
 
     .imm_signed_i           (imm_signed),
 
     .pc_val_d1_i            (pc_val_d1),
     .pc_val_d2_i            (pc_val_d2),
+
     
     .x_op1_o                (x_op1),
     .x_op2_o                (x_op2),
@@ -280,6 +301,21 @@ module core(
     .dm_wen_o       (dm_wen_o),
     .dm_addr_o      (dm_addr_o),
     .dm_din_o       (dm_din_o)
+  );
+
+  csr u_csr(
+    .rst_n_i            (rst_n_i),
+    .clk_i              (clk_i),
+
+    .csr_addr_i         (csr_addr),
+    .mode_i             (csr_op_mode),
+    .reg_val_i          (x_op1),
+
+    .mtvec_o            (mtvec),
+    .mepc_o             (mepc),
+
+    .csr_val_o          (csr_val),
+    .raise_exception_o  (csr_exception)
   );
 
 endmodule
