@@ -59,12 +59,13 @@ module control(
 
   incr_pc_o,
   
-  stall_o,
+  conflict_o,
   x_arith_zero_lsb_o,
+  x_excep_code_o,
+  x_load_mcause_o,
 
   ret_o,
   exception_o
-
 );
 
   import proc_pkg::*;
@@ -105,8 +106,10 @@ module control(
   output logic [4:0] reg_w_addr_o;
   output logic [31:0] imm_signed_o;
   output logic incr_pc_o;
-  output logic stall_o;
+  output logic conflict_o;
   output logic x_arith_zero_lsb_o;
+  output logic [31:0] x_excep_code_o;
+  output logic x_load_mcause_o;
   output logic ret_o;
   output logic exception_o;
 
@@ -133,6 +136,7 @@ module control(
   logic x_exception, m_exception, w_exception;
   logic x_ret, m_ret, w_ret;
   logic [3:0] d_excep_code, x_excep_code, m_excep_code;
+  logic x_load_mcause;
   logic jumping;
   logic jump_or_branch_conflict;
 
@@ -145,7 +149,7 @@ module control(
   assign x_logical_en_o = x_logical_en_q;
   assign x_jump_o = x_jump;
   assign incr_pc_o = ~conflict;
-  assign stall_o = conflict;
+  assign conflict_o = conflict;
   assign pc_load_arith_out_o = branch_taken_i | x_jump;
   assign ecall_o = 1'b0;
   assign w_funct3_o = m_funct3_q;
@@ -156,6 +160,8 @@ module control(
 
   assign exception_o = m_exception | csr_exception_i;
   assign ret_o = m_ret;
+  assign x_excep_code_o = x_excep_code;
+  assign x_load_mcause_o = x_load_mcause;
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
@@ -321,6 +327,7 @@ module control(
     csr_op_mode_next = NONE;
     x_exception = 1'b0;
     x_excep_code = '0;
+    x_load_mcause = '0;
     x_ret = 1'b0;
     if (conflict == 1'b0) begin
       case (d_opcode)
@@ -346,8 +353,10 @@ module control(
               x_exception = 1'b1;
               if (d_inst_i[31:20] == 12'h000) begin
                 x_excep_code = 4'hB;    // ECALL from M-mode
+                x_load_mcause = 1'b1;
               end else if (d_inst_i[31:20] == 12'h001) begin
                 x_excep_code = 4'h3;    // Breakpoint
+                x_load_mcause = 1'b1;
               end
             end
           end

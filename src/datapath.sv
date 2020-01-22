@@ -222,6 +222,9 @@ module datapath(
           w_mux_next = m_dm_dout_i;
         endcase
       end
+      CSR: begin
+        w_mux_next = csr_val_i;
+      end
     endcase
   end
 

@@ -34,9 +34,11 @@ module top(
   logic dm_wen;
   logic [31:0] dm_din;
   logic [31:0] dm_addr;
+  logic dm_busy;
 
   logic [31:0] im_dout;
   logic [31:0] im_addr;
+  logic im_busy;
 
 
   core u_core(
@@ -47,9 +49,11 @@ module top(
     .dm_wen_o       (dm_wen),
     .dm_din_o       (dm_din),
     .dm_addr_o      (dm_addr),
+    .dm_busy_i      (dm_busy),
 
     .im_dout_i      (im_dout),
     .im_addr_o      (im_addr),
+    .im_busy_i      (im_busy),
 
     .debug_port_o   (debug_port),
 
@@ -67,14 +71,16 @@ module top(
     .addr1_i      (dm_addr),
     .data1_in_i   (dm_din),
     .data1_out_o  (dm_dout),
+    .data1_busy_o (dm_busy),
     .wen2_i       (1'b0),
     .addr2_i      (im_addr),
     .data2_in_i   (32'h0000),
-    .data2_out_o  (im_dout)
+    .data2_out_o  (im_dout),
+    .data2_busy_o (im_busy)
   );
 
   assign tohost_int_o = (dm_wen && dm_addr == 32'h80001000);
-  assign tohost_data_o = tohost_int_o == 1'b1 ? '0 : dm_din;
+  assign tohost_data_o = tohost_int_o == 1'b1 ? dm_din : '0;
 
   // mem u_dm(
   //   .rst_n_i      (rst_n),

@@ -1,10 +1,10 @@
 ///////////////////////////////////////////////////////////
 //
+// Note:
+//    CSR addr is loaded on the executing stage 
+//    The register value is loaded on Memory stage
 //
-//
-//
-//
-//
+//    CSR read output should be available on memroy stage
 //
 //
 //
@@ -22,6 +22,9 @@ module csr(
   mode_i,
   reg_val_i,
 
+  load_mcause_i,
+  excep_code_i,
+
   raise_exception_o,
   csr_val_o,
 
@@ -29,20 +32,18 @@ module csr(
   mepc_o
 );
 
+`define HARTID 0
+
+
+`define csr_addr_to_idx(addr) \
+    (addr >= 'hF11 && addr <= 'hF14) ? addr - 'hF11 : \
+    (addr >= 'h300 && addr <= 'h306) ? addr - 'h300 + 'd4 : \
+    (addr >= 'h340 && addr <= 'h344) ? addr - 'h340 + 'd11 : \
+    (addr >= 'hB00 && addr <= 'hB9F) ? addr - 'hB00 + 'd16 : '0
+
+
 import proc_pkg::*;
 // import csr_pkg::*;
-
-function csr_addr_to_idx;
-  input logic [12:0] addr;
-  begin
-    if (addr >= 'hF11 && addr <= 'hF14) csr_addr_to_idx = addr - 'hF11;
-    else if (addr >= 'h300 && addr <= 'h306) csr_addr_to_idx = addr - 'h300 + 'd4;
-    else if (addr >= 'h340 && addr <= 'h344) csr_addr_to_idx = addr - 'h340 + 'd11;
-    else if (addr >= 'h340 && addr <= 'h344) csr_addr_to_idx = addr - 'h340 + 'd11;
-    else if (addr >= 'hB00 && addr <= 'hB9F) csr_addr_to_idx = addr - 'hB00 + 'd16;
-    // else if (addr >= 'h320 && addr <= 'h33F) csr_addr_to_idx = addr - 'h320 + 'd175;
-  end
-endfunction
 
 input logic rst_n_i;
 input logic clk_i;
@@ -51,6 +52,9 @@ input logic [12:0] csr_addr_i;
 input logic [1:0] mode_i;
 
 input logic [31:0] reg_val_i;
+
+input logic [31:0] excep_code_i;
+input logic load_mcause_i;
 
 output logic raise_exception_o;
 output logic [31:0] csr_val_o;
@@ -96,11 +100,30 @@ integer i;
 logic [31:0] csr_regfield_q[0:175];
 logic [31:0] csr_regfield_next[0:175];
 
+logic [31:0] csr_val_next;
+
 assign mtvec_o = mtvec;
 assign mepc_o = mepc;
 
 always_comb begin
+  if (csr_addr_i[11:10] === 2'b11) begin // read-only
+    case (csr_addr_i)
+    'h305:
+      csr_val_next = `HARTID;
+    default:
+      csr_val_next = '0;
+    endcase
+  end
+  else begin
+    csr_val_next = csr_regfield_q[`csr_addr_to_idx(csr_addr_i)];
+  end
   raise_exception_next = 1'b0;
+
+  // TODO: skip read only values
+  for (i = 0; i < 175; i++) begin
+    csr_regfield_next[i] = csr_regfield_q[i];
+  end
+
   if ((csr_addr_i >= 12'hF11 && csr_addr_i <= 12'hF14) || 
       (csr_addr_i >= 12'h300 && csr_addr_i <= 12'h306) ||
       (csr_addr_i >= 12'h340 && csr_addr_i <= 12'h344) ||
@@ -110,35 +133,38 @@ always_comb begin
       (csr_addr_i >= 12'h300 && csr_addr_i <= 12'h306)) begin */
     if (csr_addr_i[11:10] !== 2'b11) begin // not read-only
       if (mode_i == CLR) begin
-        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] &= ~reg_val_i;
+        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] &= ~reg_val_i;
       end else if (mode_i == SET) begin
-        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] |= reg_val_i;
+        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] |= reg_val_i;
       end else if (mode_i == READ_WRITE) begin
-        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] = reg_val_i;
+        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] = reg_val_i;
       end
     end
   end else if (mode_i != NONE) begin
     raise_exception_next = 1'b1;
   end
+  if (load_mcause_i == 1'b1) begin
+    csr_regfield_next[13] = excep_code_i;
+  end
 end
 
 always_comb begin
-  mvendorid = csr_regfield_q[csr_addr_to_idx('hF11)];
-  marchid = csr_regfield_q[csr_addr_to_idx('hF12)];
-  mimpid = csr_regfield_q[csr_addr_to_idx('hF13)];
-  mhartid = csr_regfield_q[csr_addr_to_idx('hF14)];
-  mstatus = csr_regfield_q[csr_addr_to_idx('h300)];
-  misa = csr_regfield_q[csr_addr_to_idx('h301)];
+  mvendorid = csr_regfield_q[`csr_addr_to_idx('hF11)];
+  marchid = csr_regfield_q[`csr_addr_to_idx('hF12)];
+  mimpid = csr_regfield_q[`csr_addr_to_idx('hF13)];
+  mhartid = csr_regfield_q[`csr_addr_to_idx('hF14)];
+  mstatus = csr_regfield_q[`csr_addr_to_idx('h300)];
+  misa = csr_regfield_q[`csr_addr_to_idx('h301)];
   // medeleg = csr_regfield_q['hF11];
   // mideleg = csr_regfield_q['hF11];
-  mie = csr_regfield_q[csr_addr_to_idx('h304)];
-  mtvec = csr_regfield_q[csr_addr_to_idx('h305)];
-  mcounteren = csr_regfield_q[csr_addr_to_idx('h306)];
-  mscratch = csr_regfield_q[csr_addr_to_idx('h340)];
-  mepc = csr_regfield_q[csr_addr_to_idx('h341)];
-  mcause = csr_regfield_q[csr_addr_to_idx('h342)];
-  mtval = csr_regfield_q[csr_addr_to_idx('h343)];
-  mip = csr_regfield_q[csr_addr_to_idx('h344)];
+  mie = csr_regfield_q[`csr_addr_to_idx('h304)];
+  mtvec = csr_regfield_q[`csr_addr_to_idx('h305)];
+  mcounteren = csr_regfield_q[`csr_addr_to_idx('h306)];
+  mscratch = csr_regfield_q[`csr_addr_to_idx('h340)];
+  mepc = csr_regfield_q[`csr_addr_to_idx('h341)];
+  mcause = csr_regfield_q[`csr_addr_to_idx('h342)];
+  mtval = csr_regfield_q[`csr_addr_to_idx('h343)];
+  mip = csr_regfield_q[`csr_addr_to_idx('h344)];
 end
 
 always_ff @(posedge clk_i, negedge rst_n_i) begin
@@ -158,6 +184,14 @@ always_ff @(posedge clk_i, negedge rst_n_i) begin
     for (i = 0; i <= 175; i++) begin
       csr_regfield_q[i] = csr_regfield_next[i];
     end
+  end
+end
+
+always_ff @(posedge clk_i, posedge rst_n_i) begin
+  if (rst_n_i == 1'b0) begin
+    csr_val_o <= '0;
+  end else begin
+    csr_val_o <= csr_val_next;
   end
 end
 

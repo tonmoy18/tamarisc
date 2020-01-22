@@ -24,9 +24,11 @@ module core(
     dm_wen_o,
     dm_din_o,
     dm_addr_o,
+    dm_busy_i,
     
     im_dout_i,
     im_addr_o,
+    im_busy_i,
 
     debug_port_o,
     ecall_o
@@ -41,9 +43,11 @@ module core(
   output logic dm_wen_o;
   output logic [31:0] dm_din_o;
   output logic [31:0] dm_addr_o;
+  input logic dm_busy_i;
 
   input logic [31:0] im_dout_i;
   output logic [31:0] im_addr_o;
+  input logic im_busy_i;
 
   output logic [31:0] debug_port_o;
   output logic ecall_o;
@@ -78,6 +82,7 @@ module core(
   logic [31:0] pc_val_d2;
   logic incr_pc;
   logic pc_load_arith_out;
+  logic conflict;
   logic stall;
   logic branch_taken;
 
@@ -94,6 +99,9 @@ module core(
 
   logic [31:0] mtvec;
   logic [31:0] mepc;
+
+  logic x_load_mcause;
+  logic [31:0] x_excep_code;
 
   logic [31:0] csr_val;
 
@@ -112,7 +120,8 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .stall_i        (stall),
+    .stall_i        (im_busy_i),
+    .conflict_i     (conflict),
     .incr_pc_i      (incr_pc),
     .exception_i    (exception),
     .ret_i          (ret),
@@ -132,14 +141,18 @@ module core(
     .clk_i          (clk_i),
     
     .pc_i           (pc_val),
-    .stall_i        (stall),
+    .conflict_i     (conflict),
     .branch_taken_i (branch_taken),
-    .im_dout_i      (im_dout_i),
     .x_jump_i       (x_jump),
+
+    .im_busy_i      (im_busy_i),
+    .im_dout_i      (im_dout_i),
 
     .im_addr_o      (im_addr_o),
 
-    .inst_o         (d_inst)
+    .inst_o         (d_inst),
+
+    .stall_o        (stall)
   );
 
   regfile u_regfile (
@@ -200,8 +213,10 @@ module core(
 
     .incr_pc_o              (incr_pc),
       
-    .stall_o                (stall),
+    .conflict_o             (conflict),
 
+    .x_excep_code_o         (x_excep_code),
+    .x_load_mcause_o        (x_load_mcause),
     .ret_o                  (ret),
     .exception_o            (exception)
   );
@@ -310,6 +325,9 @@ module core(
     .csr_addr_i         (csr_addr),
     .mode_i             (csr_op_mode),
     .reg_val_i          (x_op1),
+
+    .load_mcause_i      (x_load_mcause),
+    .excep_code_i       (x_excep_code),
 
     .mtvec_o            (mtvec),
     .mepc_o             (mepc),

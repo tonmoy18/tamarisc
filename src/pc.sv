@@ -20,6 +20,7 @@ module pc(
     clk_i,
 
     stall_i,
+    conflict_i,
     incr_pc_i,
     exception_i,
     ret_i,
@@ -36,6 +37,7 @@ module pc(
   // Input/Output Definitions
   input logic rst_n_i, clk_i;
   input logic stall_i;
+  input logic conflict_i;
   input logic incr_pc_i;
   input logic exception_i;
   input logic ret_i;
@@ -67,13 +69,15 @@ module pc(
       pc_d2_q <= `PC_RESET_VAL;
     end else begin
       pc_q <= next_pc;
-      pc_d_q <= (stall_i == 1'b1) ? pc_d_q : next_pc_d;
-      pc_d2_q <= (stall_i == 1'b1) ? pc_d2_q : next_pc_d2;
+      // pc_d_q <= (stall_i == 1'b1 || conflict_i == 1'b1) ? pc_d_q : next_pc_d;
+      // pc_d2_q <= (stall_i == 1'b1 || conflict_i == 1'b1) ? pc_d2_q : next_pc_d2;
+      pc_d_q <= (conflict_i == 1'b1) ? pc_d_q : next_pc_d;
+      pc_d2_q <= (conflict_i == 1'b1) ? pc_d2_q : next_pc_d2;
     end
   end
 
   always_comb begin
-    // if (stall_i == 1'b1) begin
+    // if (stall_i == 1'b1 || conflict_i == 1'b1) begin
     //   next_pc_d = pc_d2_q;
     //   next_pc_d2 = pc_d2_q;
     // end else begin
@@ -84,9 +88,9 @@ module pc(
 
   always_comb begin
     if (exception_i == 1'b1) next_pc = {mtvec_i[31:2], 2'b00};
-    else if (ret_i == 1'b1) next_pc = mepc_i;
     else if (load_arith_i == 1'b1) next_pc = arith_out_i;
-    else if (stall_i == 1'b1) next_pc = pc_q;
+    else if (ret_i == 1'b1) next_pc = mepc_i;
+    else if (stall_i == 1'b1 || conflict_i == 1'b1) next_pc = pc_q;
     else if (incr_pc_i == 1'b1) next_pc = pc_q + 'd4;
     else next_pc = pc_q;
   end
