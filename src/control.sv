@@ -132,7 +132,7 @@ module control(
   logic [4:0] d_rd, x_rd, m_rd, w_rd;
   logic [4:0] next_x_rd, next_m_rd, next_w_rd;
   logic conflict;
-  logic d_jump, x_jump, m_jump, next_x_jump, w_jump;
+  logic d_jump, x_jump, m_jump, next_x_jump;
   logic x_exception, m_exception, w_exception;
   logic x_ret, m_ret, w_ret;
   logic [3:0] d_excep_code, x_excep_code, m_excep_code;
@@ -200,7 +200,6 @@ module control(
       m_funct3_q <= '0;
       w_opcode <= '0;
       w_rd <= '0;
-      w_jump <= '0;
     end else begin
       x_opcode <= next_x_opcode;
       x_rd <= next_x_rd;
@@ -211,7 +210,6 @@ module control(
       m_funct3_q <= (x_opcode == `LOAD_OPCODE) ? x_funct3_q : '0;
       w_opcode <= next_w_opcode;
       w_rd <= next_w_rd;
-      w_jump <= m_jump;
     end
   end
 
@@ -236,8 +234,9 @@ module control(
     next_w_opcode = m_opcode;
     
     // Probably should keep in decode structure
-    // if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0) begin
-    if (conflict == 1'b0 && branch_taken_i == 1'b0 && x_jump == 1'b0 && jumping == 1'b0 && x_exception == 1'b0 && x_ret == 1'b0) begin
+    if (conflict == 1'b0 && branch_taken_i == 1'b0 &&
+        x_jump == 1'b0 && jumping == 1'b0 &&
+        x_exception == 1'b0 && x_ret == 1'b0) begin
       next_x_rd = d_rd;
       next_x_opcode = d_opcode;
       next_x_jump = d_jump;
