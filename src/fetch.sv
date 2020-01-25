@@ -22,7 +22,7 @@ module fetch(
     pc_i,
     conflict_i,
     branch_taken_i,
-    x_jump_i,
+    jump_i,
 
     im_busy_i,
     im_dout_i,
@@ -41,7 +41,7 @@ module fetch(
   input logic branch_taken_i;
   input logic im_busy_i;
   input logic [31:0] im_dout_i;
-  input logic x_jump_i;
+  input logic jump_i;
 
   output logic [31:0] im_addr_o;
   output logic [31:0] inst_o;
@@ -71,7 +71,7 @@ module fetch(
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
       inst_o <= '0;
-    end else if (branch_taken_i == 1'b1 || x_jump_i == 1'b1) begin
+    end else if (branch_taken_i == 1'b1 || jump_i == 1'b1) begin
       inst_o <= '0;
     end else if (conflict_i == 1'b1) begin
       inst_o <= inst_o;

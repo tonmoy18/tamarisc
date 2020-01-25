@@ -22,6 +22,7 @@ module core(
     
     dm_dout_i,
     dm_wen_o,
+    dm_en_o,
     dm_din_o,
     dm_addr_o,
     dm_busy_i,
@@ -41,6 +42,7 @@ module core(
 
   input logic [31:0] dm_dout_i;
   output logic dm_wen_o;
+  output logic dm_en_o;
   output logic [31:0] dm_din_o;
   output logic [31:0] dm_addr_o;
   input logic dm_busy_i;
@@ -105,13 +107,15 @@ module core(
 
   logic [31:0] csr_val;
 
-  logic x_dm_wen;
+  logic x_dm_wen, x_dm_en;
   logic [31:0] x_dm_addr;
   logic [31:0] x_dm_din;
   logic [31:0] m_dm_dout;
   logic [3:0] w_funct3;
 
   logic exception, ret;
+
+  logic dcache_stall;
 
   // Main body of module
   assign reg_din = w_mux;
@@ -120,7 +124,8 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .stall_i        (im_busy_i),
+    // .stall_i        (im_busy_i),
+    .stall_i        (im_busy_i | dm_busy_i),
     .conflict_i     (conflict),
     .incr_pc_i      (incr_pc),
     .exception_i    (exception),
@@ -143,7 +148,7 @@ module core(
     .pc_i           (pc_val),
     .conflict_i     (conflict),
     .branch_taken_i (branch_taken),
-    .x_jump_i       (x_jump),
+    .jump_i         (x_jump),
 
     .im_busy_i      (im_busy_i),
     .im_dout_i      (im_dout_i),
@@ -194,7 +199,7 @@ module core(
     .x_arith_op1_mux_sel_o  (x_arith_op1_mux_sel),
     .x_arith_op2_mux_sel_o  (x_arith_op2_mux_sel),
 
-    .w_mux_sel_o             (w_mux_sel),
+    .w_mux_sel_o            (w_mux_sel),
 
     .x_funct3_o             (x_funct3),
     .x_funct7_30_o          (x_funct7_30),
@@ -205,6 +210,7 @@ module core(
 
     .x_jump_o               (x_jump),
 
+    .x_dm_en_o              (x_dm_en),
     .x_dm_wen_o             (x_dm_wen),
 
     .w_funct3_o             (w_funct3),
@@ -305,14 +311,19 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
+    .x_dm_en_i      (x_dm_en),
     .x_dm_wen_i     (x_dm_wen),
     .x_dm_addr_i    (arith_out),
     .x_dm_din_i     (reg_d2out),
 
     .m_dm_dout_o    (m_dm_dout),
 
+    .dcache_stall_o (dcache_stall),
+
+    .dm_busy_i      (dm_busy_i),
     .dm_dout_i      (dm_dout_i),
 
+    .dm_en_o        (dm_en_o),
     .dm_wen_o       (dm_wen_o),
     .dm_addr_o      (dm_addr_o),
     .dm_din_o       (dm_din_o)

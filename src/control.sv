@@ -49,6 +49,7 @@ module control(
 
   x_jump_o,
 
+  x_dm_en_o,
   x_dm_wen_o,
 
   w_funct3_o,
@@ -99,6 +100,7 @@ module control(
   output logic x_logical_en_o;
   output logic x_jump_o;
 
+  output logic x_dm_en_o;
   output logic x_dm_wen_o;
 
   output logic [2:0] w_funct3_o;
@@ -321,6 +323,7 @@ module control(
     d_jump = '0;
     x_arith_zero_lsb_o = '0;
     x_dm_wen_o = '0;
+    x_dm_en_o = '0;
     csr_r_en_next = 1'b0;
     csr_addr_next = '0;
     csr_op_mode_next = NONE;
@@ -379,6 +382,9 @@ module control(
                 x_funct7_30_next = d_inst_i[30];
             end
           end
+          else begin
+            x_dm_en_o = 1'b1;
+          end
           x_op1_mux_sel_o = REG1_DATA;
           x_op2_mux_sel_o = IMM_SIGNED;
           x_arith_op1_mux_sel_o = REG1_DATA;
@@ -392,6 +398,7 @@ module control(
           x_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:25], d_inst_i[11:7]};
           x_dm_wen_o = 1'b1;
+          x_dm_en_o = 1'b1;
         end
         `LUI_OPCODE: begin
           d_rd = d_inst_i[11:7];

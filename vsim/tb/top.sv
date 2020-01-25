@@ -46,6 +46,7 @@ module top(
     .rst_n_i    (rst_n),
     
     .dm_dout_i      (dm_dout),
+    .dm_en_o        (dm_en),
     .dm_wen_o       (dm_wen),
     .dm_din_o       (dm_din),
     .dm_addr_o      (dm_addr),
@@ -67,11 +68,13 @@ module top(
   ) u_mem (
     .rst_n_i      (rst_n),
     .clk_i        (clk),
+    .en1_i        (dm_en),
     .wen1_i       (dm_wen),
     .addr1_i      (dm_addr),
     .data1_in_i   (dm_din),
     .data1_out_o  (dm_dout),
     .data1_busy_o (dm_busy),
+    .en2_i        (1'b1),
     .wen2_i       (1'b0),
     .addr2_i      (im_addr),
     .data2_in_i   (32'h0000),

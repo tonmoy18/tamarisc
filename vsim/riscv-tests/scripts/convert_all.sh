@@ -2,6 +2,6 @@
 
 for f in "$@"
 do
-    python ./scripts/dump2hex.py $f 80000100 > hexfiles/$(basename $(echo $f) | sed s/dump/hex/g)
+    python ./scripts/dump2hex.py $f 80000000 > hexfiles/$(basename $(echo $f) | sed s/dump/hex/g)
 done
 
