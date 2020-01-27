@@ -25,6 +25,9 @@ module control(
 
   csr_exception_i,
 
+  dcache_stall_i,
+  fetch_stall_i,
+
   pc_load_arith_out_o,
   reg1_addr_o,
   reg2_addr_o,
@@ -35,10 +38,10 @@ module control(
   csr_addr_o,
 
   alu_mux_sel_o,
-  x_op1_mux_sel_o,
-  x_op2_mux_sel_o,
-  x_arith_op1_mux_sel_o,
-  x_arith_op2_mux_sel_o,
+  d_op1_mux_sel_o,
+  d_op2_mux_sel_o,
+  d_arith_op1_mux_sel_o,
+  d_arith_op2_mux_sel_o,
 
   w_mux_sel_o,
 
@@ -49,8 +52,8 @@ module control(
 
   x_jump_o,
 
-  x_dm_en_o,
-  x_dm_wen_o,
+  d_dm_en_o,
+  d_dm_wen_o,
 
   w_funct3_o,
 
@@ -61,9 +64,11 @@ module control(
   incr_pc_o,
   
   conflict_o,
-  x_arith_zero_lsb_o,
-  x_excep_code_o,
-  x_load_mcause_o,
+  d_arith_zero_lsb_o,
+  d_excep_code_o,
+  d_load_mcause_o,
+
+  stall_pc_o,
 
   ret_o,
   exception_o
@@ -78,6 +83,9 @@ module control(
 
   input logic csr_exception_i;
 
+  input logic dcache_stall_i;
+  input logic fetch_stall_i;
+
   output logic pc_load_arith_out_o;
   output logic [4:0] reg1_addr_o;
   output logic [4:0] reg2_addr_o;
@@ -88,10 +96,10 @@ module control(
   output logic csr_w_en_o;
 
   output alu_mux_sel_t alu_mux_sel_o;
-  output x_op1_mux_sel_t x_op1_mux_sel_o;
-  output x_op2_mux_sel_t x_op2_mux_sel_o;
-  output x_op1_mux_sel_t x_arith_op1_mux_sel_o;
-  output x_op2_mux_sel_t x_arith_op2_mux_sel_o;
+  output op1_mux_sel_t d_op1_mux_sel_o;
+  output op2_mux_sel_t d_op2_mux_sel_o;
+  output op1_mux_sel_t d_arith_op1_mux_sel_o;
+  output op2_mux_sel_t d_arith_op2_mux_sel_o;
   output w_mux_sel_t w_mux_sel_o;
 
   output logic [2:0] x_funct3_o;
@@ -100,8 +108,8 @@ module control(
   output logic x_logical_en_o;
   output logic x_jump_o;
 
-  output logic x_dm_en_o;
-  output logic x_dm_wen_o;
+  output logic d_dm_en_o;
+  output logic d_dm_wen_o;
 
   output logic [2:0] w_funct3_o;
 
@@ -109,9 +117,10 @@ module control(
   output logic [31:0] imm_signed_o;
   output logic incr_pc_o;
   output logic conflict_o;
-  output logic x_arith_zero_lsb_o;
-  output logic [31:0] x_excep_code_o;
-  output logic x_load_mcause_o;
+  output logic d_arith_zero_lsb_o;
+  output logic [31:0] d_excep_code_o;
+  output logic d_load_mcause_o;
+  output logic stall_pc_o;
   output logic ret_o;
   output logic exception_o;
 
@@ -135,10 +144,10 @@ module control(
   logic [4:0] next_x_rd, next_m_rd, next_w_rd;
   logic conflict;
   logic d_jump, x_jump, m_jump, next_x_jump;
-  logic x_exception, m_exception, w_exception;
-  logic x_ret, m_ret, w_ret;
-  logic [3:0] d_excep_code, x_excep_code, m_excep_code;
-  logic x_load_mcause;
+  logic d_exception, m_exception, w_exception;
+  logic d_ret, m_ret, w_ret;
+  logic [3:0] d_excep_code, m_excep_code;
+  logic d_load_mcause;
   logic jumping;
   logic jump_or_branch_conflict;
 
@@ -162,8 +171,9 @@ module control(
 
   assign exception_o = m_exception | csr_exception_i;
   assign ret_o = m_ret;
-  assign x_excep_code_o = x_excep_code;
-  assign x_load_mcause_o = x_load_mcause;
+  assign d_excep_code_o = d_excep_code;
+  assign d_load_mcause_o = d_load_mcause;
+  assign stall_pc_o = fetch_stall_i | dcache_stall_i;
 
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
@@ -184,9 +194,9 @@ module control(
       m_ret <= '0;
       w_ret <= '0;
     end else begin
-      m_exception <= x_exception;
+      m_exception <= d_exception;
       w_exception <= m_exception;
-      m_ret <= x_ret;
+      m_ret <= d_ret;
       w_ret <= m_ret; 
     end
   end
@@ -238,7 +248,7 @@ module control(
     // Probably should keep in decode structure
     if (conflict == 1'b0 && branch_taken_i == 1'b0 &&
         x_jump == 1'b0 && jumping == 1'b0 &&
-        x_exception == 1'b0 && x_ret == 1'b0) begin
+        d_exception == 1'b0 && d_ret == 1'b0) begin
       next_x_rd = d_rd;
       next_x_opcode = d_opcode;
       next_x_jump = d_jump;
@@ -315,22 +325,22 @@ module control(
     x_funct7_30_next = 1'b0;
     x_is_branch_op_next = 1'b0;
     x_logical_en_next = 1'b0;
-    x_op1_mux_sel_o = REG1_DATA;
-    x_op2_mux_sel_o = REG2_DATA;
-    x_arith_op1_mux_sel_o = REG1_DATA;
-    x_arith_op2_mux_sel_o = REG2_DATA;
+    d_op1_mux_sel_o = REG1_DATA;
+    d_op2_mux_sel_o = REG2_DATA;
+    d_arith_op1_mux_sel_o = REG1_DATA;
+    d_arith_op2_mux_sel_o = REG2_DATA;
     imm_signed_o = '0;
     d_jump = '0;
-    x_arith_zero_lsb_o = '0;
-    x_dm_wen_o = '0;
-    x_dm_en_o = '0;
+    d_arith_zero_lsb_o = '0;
+    d_dm_wen_o = '0;
+    d_dm_en_o = '0;
     csr_r_en_next = 1'b0;
     csr_addr_next = '0;
     csr_op_mode_next = NONE;
-    x_exception = 1'b0;
-    x_excep_code = '0;
-    x_load_mcause = '0;
-    x_ret = 1'b0;
+    d_exception = 1'b0;
+    d_excep_code = '0;
+    d_load_mcause = '0;
+    d_ret = 1'b0;
     if (conflict == 1'b0) begin
       case (d_opcode)
         `SYSTEM_OPCODE: begin
@@ -343,22 +353,22 @@ module control(
             else csr_op_mode_next = NONE;
             d_rd = d_inst_i[11:7];
             if (d_inst_i[14] == 1'b0) begin // non-immediate
-              x_op1_mux_sel_o = REG1_DATA;
+              d_op1_mux_sel_o = REG1_DATA;
             end else begin // immediate
-              x_op1_mux_sel_o = IMM_SIGNED;
+              d_op1_mux_sel_o = IMM_SIGNED;
               imm_signed_o = {27'b0, d_inst_i[19:15]};
             end
           end else begin
             if (d_inst_i[31:20] == 12'h302) begin
-              x_ret = 1'b1;
+              d_ret = 1'b1;
             end else begin
-              x_exception = 1'b1;
+              d_exception = 1'b1;
               if (d_inst_i[31:20] == 12'h000) begin
-                x_excep_code = 4'hB;    // ECALL from M-mode
-                x_load_mcause = 1'b1;
+                d_excep_code = 4'hB;    // ECALL from M-mode
+                d_load_mcause = 1'b1;
               end else if (d_inst_i[31:20] == 12'h001) begin
-                x_excep_code = 4'h3;    // Breakpoint
-                x_load_mcause = 1'b1;
+                d_excep_code = 4'h3;    // Breakpoint
+                d_load_mcause = 1'b1;
               end
             end
           end
@@ -367,10 +377,10 @@ module control(
           d_rd = d_inst_i[11:7];
           x_funct3_next = d_inst_i[14:12];
           x_funct7_30_next = d_inst_i[30];
-          x_op1_mux_sel_o = REG1_DATA;
-          x_op2_mux_sel_o = REG2_DATA;
-          x_arith_op1_mux_sel_o = REG1_DATA;
-          x_arith_op2_mux_sel_o = REG2_DATA;
+          d_op1_mux_sel_o = REG1_DATA;
+          d_op2_mux_sel_o = REG2_DATA;
+          d_arith_op1_mux_sel_o = REG1_DATA;
+          d_arith_op2_mux_sel_o = REG2_DATA;
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `ITYPE_ALU_OPCODE, `LOAD_OPCODE: begin
@@ -383,59 +393,59 @@ module control(
             end
           end
           else begin
-            x_dm_en_o = 1'b1;
+            d_dm_en_o = 1'b1;
           end
-          x_op1_mux_sel_o = REG1_DATA;
-          x_op2_mux_sel_o = IMM_SIGNED;
-          x_arith_op1_mux_sel_o = REG1_DATA;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_op1_mux_sel_o = REG1_DATA;
+          d_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = REG1_DATA;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `STORE_OPCODE: begin
           x_funct3_next = d_inst_i[14:12];
-          x_arith_op1_mux_sel_o = REG1_DATA;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = REG1_DATA;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:25], d_inst_i[11:7]};
-          x_dm_wen_o = 1'b1;
-          x_dm_en_o = 1'b1;
+          d_dm_wen_o = 1'b1;
+          d_dm_en_o = 1'b1;
         end
         `LUI_OPCODE: begin
           d_rd = d_inst_i[11:7];
-          x_arith_op1_mux_sel_o = REG1_DATA;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = REG1_DATA;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { d_inst_i[31:12], 12'h000};
         end
         `AUIPC_OPCODE: begin
           d_rd = d_inst_i[11:7];
-          x_arith_op1_mux_sel_o = PC_VAL_D1;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = PC_VAL_D1;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { d_inst_i[31:12], 12'h000};
         end
         `BRANCH_OPCODE: begin
           x_funct3_next = d_inst_i[14:12];
           x_is_branch_op_next = 1'b1;
-          x_op1_mux_sel_o = REG1_DATA;
-          x_op2_mux_sel_o = REG2_DATA;
-          x_arith_op1_mux_sel_o = PC_VAL_D1;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_op1_mux_sel_o = REG1_DATA;
+          d_op2_mux_sel_o = REG2_DATA;
+          d_arith_op1_mux_sel_o = PC_VAL_D1;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[7], d_inst_i[30:25], d_inst_i[11:8], 1'b0};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
         end
         `JAL_OPCODE: begin
           d_rd = d_inst_i[11:7];
-          x_arith_op1_mux_sel_o = PC_VAL_D1;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = PC_VAL_D1;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {12{d_inst_i[31]}}, d_inst_i[19:12], d_inst_i[20], d_inst_i[30:21], 1'b0 };
           d_jump = 1'b1;
         end
         `JALR_OPCODE: begin
           d_rd = d_inst_i[11:7];
-          x_arith_zero_lsb_o = 1'b1;
-          x_op1_mux_sel_o = REG1_DATA;
-          x_op2_mux_sel_o = IMM_SIGNED;
-          x_arith_op1_mux_sel_o = REG1_DATA;
-          x_arith_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_zero_lsb_o = 1'b1;
+          d_op1_mux_sel_o = REG1_DATA;
+          d_op2_mux_sel_o = IMM_SIGNED;
+          d_arith_op1_mux_sel_o = REG1_DATA;
+          d_arith_op2_mux_sel_o = IMM_SIGNED;
           imm_signed_o = { {20{d_inst_i[31]}}, d_inst_i[31:20]};
           x_logical_en_next = 1'b1; // TODO: enable only for logical ops
           d_jump = 1'b1;

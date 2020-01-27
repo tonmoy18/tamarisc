@@ -85,16 +85,17 @@ module core(
   logic incr_pc;
   logic pc_load_arith_out;
   logic conflict;
-  logic stall;
+  logic fetch_stall;
+  logic dcache_stall;
   logic branch_taken;
 
   logic x_logical_en;
   logic x_jump;
   alu_mux_sel_t alu_mux_sel;
-  x_op1_mux_sel_t x_op1_mux_sel;
-  x_op2_mux_sel_t x_op2_mux_sel;
-  x_op1_mux_sel_t x_arith_op1_mux_sel;
-  x_op2_mux_sel_t x_arith_op2_mux_sel;
+  op1_mux_sel_t d_op1_mux_sel;
+  op2_mux_sel_t d_op2_mux_sel;
+  op1_mux_sel_t d_arith_op1_mux_sel;
+  op2_mux_sel_t d_arith_op2_mux_sel;
   w_mux_sel_t w_mux_sel;
   csr_op_mode_t csr_op_mode;
   logic [12:0] csr_addr;
@@ -102,12 +103,12 @@ module core(
   logic [31:0] mtvec;
   logic [31:0] mepc;
 
-  logic x_load_mcause;
-  logic [31:0] x_excep_code;
+  logic d_load_mcause;
+  logic [31:0] d_excep_code;
 
   logic [31:0] csr_val;
 
-  logic x_dm_wen, x_dm_en;
+  logic d_dm_wen, d_dm_en;
   logic [31:0] x_dm_addr;
   logic [31:0] x_dm_din;
   logic [31:0] m_dm_dout;
@@ -115,7 +116,7 @@ module core(
 
   logic exception, ret;
 
-  logic dcache_stall;
+  logic stall_pc;
 
   // Main body of module
   assign reg_din = w_mux;
@@ -124,8 +125,7 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    // .stall_i        (im_busy_i),
-    .stall_i        (im_busy_i | dm_busy_i),
+    .stall_i        (stall_pc),
     .conflict_i     (conflict),
     .incr_pc_i      (incr_pc),
     .exception_i    (exception),
@@ -157,7 +157,7 @@ module core(
 
     .inst_o         (d_inst),
 
-    .stall_o        (stall)
+    .stall_o        (fetch_stall)
   );
 
   regfile u_regfile (
@@ -186,6 +186,9 @@ module core(
 
     .csr_exception_i        (csr_exception),
 
+    .fetch_stall_i          (fetch_stall),
+    .dcache_stall_i         (dcache_stall),
+
     .csr_op_mode_o          (csr_op_mode),
     .csr_addr_o             (csr_addr),
 
@@ -194,10 +197,10 @@ module core(
     .reg2_addr_o            (reg2_addr),
 
     .alu_mux_sel_o          (alu_mux_sel),
-    .x_op1_mux_sel_o        (x_op1_mux_sel),
-    .x_op2_mux_sel_o        (x_op2_mux_sel),
-    .x_arith_op1_mux_sel_o  (x_arith_op1_mux_sel),
-    .x_arith_op2_mux_sel_o  (x_arith_op2_mux_sel),
+    .d_op1_mux_sel_o        (d_op1_mux_sel),
+    .d_op2_mux_sel_o        (d_op2_mux_sel),
+    .d_arith_op1_mux_sel_o  (d_arith_op1_mux_sel),
+    .d_arith_op2_mux_sel_o  (d_arith_op2_mux_sel),
 
     .w_mux_sel_o            (w_mux_sel),
 
@@ -210,8 +213,8 @@ module core(
 
     .x_jump_o               (x_jump),
 
-    .x_dm_en_o              (x_dm_en),
-    .x_dm_wen_o             (x_dm_wen),
+    .d_dm_en_o              (d_dm_en),
+    .d_dm_wen_o             (d_dm_wen),
 
     .w_funct3_o             (w_funct3),
 
@@ -221,8 +224,11 @@ module core(
       
     .conflict_o             (conflict),
 
-    .x_excep_code_o         (x_excep_code),
-    .x_load_mcause_o        (x_load_mcause),
+    .d_excep_code_o         (d_excep_code),
+    .d_load_mcause_o        (d_load_mcause),
+
+    .stall_pc_o             (stall_pc),
+
     .ret_o                  (ret),
     .exception_o            (exception)
   );
@@ -232,10 +238,10 @@ module core(
     .clk_i                  (clk_i),
 
     .alu_mux_sel_i          (alu_mux_sel),
-    .x_op1_mux_sel_i        (x_op1_mux_sel),
-    .x_op2_mux_sel_i        (x_op2_mux_sel),
-    .x_arith_op1_mux_sel_i  (x_arith_op1_mux_sel),
-    .x_arith_op2_mux_sel_i  (x_arith_op2_mux_sel),
+    .d_op1_mux_sel_i        (d_op1_mux_sel),
+    .d_op2_mux_sel_i        (d_op2_mux_sel),
+    .d_arith_op1_mux_sel_i  (d_arith_op1_mux_sel),
+    .d_arith_op2_mux_sel_i  (d_arith_op2_mux_sel),
 
     .m_dm_dout_i            (m_dm_dout),
 
@@ -311,14 +317,12 @@ module core(
     .rst_n_i        (rst_n_i),
     .clk_i          (clk_i),
 
-    .x_dm_en_i      (x_dm_en),
-    .x_dm_wen_i     (x_dm_wen),
-    .x_dm_addr_i    (arith_out),
-    .x_dm_din_i     (reg_d2out),
+    .d_dm_en_i      (d_dm_en),
+    .d_dm_wen_i     (d_dm_wen),
+    .d_dm_addr_i    (arith_out),
+    .d_dm_din_i     (reg_d2out),
 
     .m_dm_dout_o    (m_dm_dout),
-
-    .dcache_stall_o (dcache_stall),
 
     .dm_busy_i      (dm_busy_i),
     .dm_dout_i      (dm_dout_i),
@@ -326,7 +330,9 @@ module core(
     .dm_en_o        (dm_en_o),
     .dm_wen_o       (dm_wen_o),
     .dm_addr_o      (dm_addr_o),
-    .dm_din_o       (dm_din_o)
+    .dm_din_o       (dm_din_o),
+
+    .stall_o        (dcache_stall)
   );
 
   csr u_csr(
@@ -337,8 +343,8 @@ module core(
     .mode_i             (csr_op_mode),
     .reg_val_i          (x_op1),
 
-    .load_mcause_i      (x_load_mcause),
-    .excep_code_i       (x_excep_code),
+    .load_mcause_i      (d_load_mcause),
+    .excep_code_i       (d_excep_code),
 
     .mtvec_o            (mtvec),
     .mepc_o             (mepc),

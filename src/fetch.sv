@@ -50,20 +50,21 @@ module fetch(
 
   logic [31:0] im_addr_d1;
 
+
   always_comb begin
     if (im_busy_i == 1'b1) begin
       im_addr_o = im_addr_d1;
+      stall_o = 1'b1;
     end else begin 
       im_addr_o = pc_i;
+      stall_o = 1'b0;
     end
   end
   
   always_ff @(posedge clk_i, negedge rst_n_i) begin
     if (rst_n_i == 1'b0) begin
-      stall_o <= '0;
       im_addr_d1 <= '0;
     end else begin
-      stall_o <= im_busy_i;
       im_addr_d1 <= im_addr_o;
     end
   end

@@ -24,10 +24,10 @@ module datapath(
     reg2_data_i,
 
     alu_mux_sel_i,
-    x_op1_mux_sel_i,
-    x_op2_mux_sel_i,
-    x_arith_op1_mux_sel_i,
-    x_arith_op2_mux_sel_i,
+    d_op1_mux_sel_i,
+    d_op2_mux_sel_i,
+    d_arith_op1_mux_sel_i,
+    d_arith_op2_mux_sel_i,
     w_mux_sel_i,
 
     arith_out_i,
@@ -72,10 +72,10 @@ module datapath(
   input logic [31:0] imm_signed_i;
 
   input alu_mux_sel_t alu_mux_sel_i;
-  input x_op1_mux_sel_t x_op1_mux_sel_i;
-  input x_op2_mux_sel_t x_op2_mux_sel_i;
-  input x_op1_mux_sel_t x_arith_op1_mux_sel_i;
-  input x_op2_mux_sel_t x_arith_op2_mux_sel_i;
+  input op1_mux_sel_t d_op1_mux_sel_i;
+  input op2_mux_sel_t d_op2_mux_sel_i;
+  input op1_mux_sel_t d_arith_op1_mux_sel_i;
+  input op2_mux_sel_t d_arith_op2_mux_sel_i;
   input w_mux_sel_t w_mux_sel_i;
 
   output logic [31:0] x_op1_o;
@@ -138,7 +138,7 @@ module datapath(
   end
 
   always_comb begin
-    case (x_op1_mux_sel_i) // synopsys infer_mux
+    case (d_op1_mux_sel_i) // synopsys infer_mux
       REG1_DATA:
         x_op1_next = reg1_data_i;
       PC_VAL_D1:
@@ -147,7 +147,7 @@ module datapath(
   end
 
   always_comb begin
-    case (x_op2_mux_sel_i) // synopsys infer_mux
+    case (d_op2_mux_sel_i) // synopsys infer_mux
       REG2_DATA:
         x_op2_next = reg2_data_i;
       IMM_SIGNED:
@@ -156,7 +156,7 @@ module datapath(
   end
 
   always_comb begin
-    case (x_arith_op1_mux_sel_i) // synopsys infer_mux
+    case (d_arith_op1_mux_sel_i) // synopsys infer_mux
       REG1_DATA:
         x_arith_op1_next = reg1_data_i;
       PC_VAL_D1:
@@ -165,7 +165,7 @@ module datapath(
   end
 
   always_comb begin
-    case (x_arith_op2_mux_sel_i) // synopsys infer_mux
+    case (d_arith_op2_mux_sel_i) // synopsys infer_mux
       REG2_DATA:
         x_arith_op2_next = reg2_data_i;
       IMM_SIGNED:

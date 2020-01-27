@@ -35,11 +35,16 @@ module csr(
 `define HARTID 0
 
 
-`define csr_addr_to_idx(addr) \
-    (addr >= 'hF11 && addr <= 'hF14) ? addr - 'hF11 : \
-    (addr >= 'h300 && addr <= 'h306) ? addr - 'h300 + 'd4 : \
-    (addr >= 'h340 && addr <= 'h344) ? addr - 'h340 + 'd11 : \
-    (addr >= 'hB00 && addr <= 'hB9F) ? addr - 'hB00 + 'd16 : '0
+function automatic [7:0] csr_addr_to_idx;
+  input [12:0] addr;
+  begin
+    if (addr >= 'hF11 && addr <= 'hF14) csr_addr_to_idx = addr - 'hF11;
+    else if (addr >= 'h300 && addr <= 'h306) csr_addr_to_idx = addr - 'h300 + 'd4;
+    else if (addr >= 'h340 && addr <= 'h344) csr_addr_to_idx = addr - 'h340 + 'd11;
+    else if (addr >= 'hB00 && addr <= 'hB9F) csr_addr_to_idx = addr - 'hB00 + 'd16;
+    else csr_addr_to_idx = '0;
+  end
+endfunction
 
 
 import proc_pkg::*;
@@ -115,7 +120,7 @@ always_comb begin
     endcase
   end
   else begin
-    csr_val_next = csr_regfield_q[`csr_addr_to_idx(csr_addr_i)];
+    csr_val_next = csr_regfield_q[csr_addr_to_idx(csr_addr_i)];
   end
   raise_exception_next = 1'b0;
 
@@ -133,11 +138,11 @@ always_comb begin
       (csr_addr_i >= 12'h300 && csr_addr_i <= 12'h306)) begin */
     if (csr_addr_i[11:10] !== 2'b11) begin // not read-only
       if (mode_i == CLR) begin
-        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] &= ~reg_val_i;
+        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] &= ~reg_val_i;
       end else if (mode_i == SET) begin
-        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] |= reg_val_i;
+        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] |= reg_val_i;
       end else if (mode_i == READ_WRITE) begin
-        csr_regfield_next[`csr_addr_to_idx(csr_addr_i)] = reg_val_i;
+        csr_regfield_next[csr_addr_to_idx(csr_addr_i)] = reg_val_i;
       end
     end
   end else if (mode_i != NONE) begin
@@ -149,22 +154,22 @@ always_comb begin
 end
 
 always_comb begin
-  mvendorid = csr_regfield_q[`csr_addr_to_idx('hF11)];
-  marchid = csr_regfield_q[`csr_addr_to_idx('hF12)];
-  mimpid = csr_regfield_q[`csr_addr_to_idx('hF13)];
-  mhartid = csr_regfield_q[`csr_addr_to_idx('hF14)];
-  mstatus = csr_regfield_q[`csr_addr_to_idx('h300)];
-  misa = csr_regfield_q[`csr_addr_to_idx('h301)];
+  mvendorid = csr_regfield_q[csr_addr_to_idx('hF11)];
+  marchid = csr_regfield_q[csr_addr_to_idx('hF12)];
+  mimpid = csr_regfield_q[csr_addr_to_idx('hF13)];
+  mhartid = csr_regfield_q[csr_addr_to_idx('hF14)];
+  mstatus = csr_regfield_q[csr_addr_to_idx('h300)];
+  misa = csr_regfield_q[csr_addr_to_idx('h301)];
   // medeleg = csr_regfield_q['hF11];
   // mideleg = csr_regfield_q['hF11];
-  mie = csr_regfield_q[`csr_addr_to_idx('h304)];
-  mtvec = csr_regfield_q[`csr_addr_to_idx('h305)];
-  mcounteren = csr_regfield_q[`csr_addr_to_idx('h306)];
-  mscratch = csr_regfield_q[`csr_addr_to_idx('h340)];
-  mepc = csr_regfield_q[`csr_addr_to_idx('h341)];
-  mcause = csr_regfield_q[`csr_addr_to_idx('h342)];
-  mtval = csr_regfield_q[`csr_addr_to_idx('h343)];
-  mip = csr_regfield_q[`csr_addr_to_idx('h344)];
+  mie = csr_regfield_q[csr_addr_to_idx('h304)];
+  mtvec = csr_regfield_q[csr_addr_to_idx('h305)];
+  mcounteren = csr_regfield_q[csr_addr_to_idx('h306)];
+  mscratch = csr_regfield_q[csr_addr_to_idx('h340)];
+  mepc = csr_regfield_q[csr_addr_to_idx('h341)];
+  mcause = csr_regfield_q[csr_addr_to_idx('h342)];
+  mtval = csr_regfield_q[csr_addr_to_idx('h343)];
+  mip = csr_regfield_q[csr_addr_to_idx('h344)];
 end
 
 always_ff @(posedge clk_i, negedge rst_n_i) begin
