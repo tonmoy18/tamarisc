@@ -10,13 +10,15 @@ The src directory holds the RTL files for the core and should be usable as is. A
 
 ### Running Simulations
 Prerequisite for running the simulation is to install [verilator](https://www.veripool.org/wiki/verilator). Then to run a particular program run the following commands:
-```cd vsim
+```bash
+cd vsim
 make HEX=<im_hexfile> HEX2=<dm_hexfile>
 ```
 
 The simulation will run until the core writes a data to `tohost` memory address, which is currently set to `0x80001000`. If the written value is 1, then the test is considers a "PASS". For example, to run the rv32i-p-add test, run the following commands:
 
-```cd vsim
+```bash
+cd vsim
 make HEX=riscv-tests/hexfiles/rv32ui-p-add.hex
 ```
 
