@@ -1,6 +1,6 @@
 # tamarisc
 
-![Image of Tamarisc Architecture](https://raw.githubusercontent.com/tonmoy18/tamarisc/master/docs/images/architecture.svg)
+![Image of Tamarisc Architecture](https://raw.githubusercontent.com/tonmoy18/tamarisc/master/docs/images/architecture.png)
 
 Tamarisc is a six stage CPU core implementing the RV32I subset of the [RISCV](https://riscv.org/specifications/) instruction set architecture in machine mode only. The implementation is done using SystemVerilog hardware definition language. The architecture assumes either two separate memory for instruction or data, or the same memory with two different ports for instruction and data. The design implements a simple always un-taken branch predictor. Conflict is resolved by stalling the instruction on the fetch stage until the conflict is resolved. Multiple jump or branch instructions on the pipeline at the same time stalls the later instruction on the fetch stage as well. This implementation has most of the machine mode SYSTEM instructions except for CSR*I and all of the machine mode CSR registers except for the counter related CSR registers.
 
