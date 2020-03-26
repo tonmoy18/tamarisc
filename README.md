@@ -33,7 +33,6 @@ The implementation features a six stage pipeline which consists of the stages: (
 ## Future Improvements
 * Implement the remaining CSR registers
 * Implement CSR*I instruction (currently CSRRW, CSRRS and CSRRC are implemented)
-* Fix signal names to match the pipeline stages better
 * Implement better instruction and data cache modules
 * Implement more intelligent branch predictor
 * Implement full suite of riscv benchmark tests for RV32MI
